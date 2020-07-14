@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+
+    <link href='https://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css'/>
+    <link href='https://fonts.googleapis.com/css?family=Lato:light' rel='stylesheet' type='text/css'/>
+    <link rel="stylesheet" href="../static/styles/google-css-addon.css">
+    <link rel="stylesheet" href="../static/styles/cayman.css">
+    <link rel="stylesheet" href="../static/styles/stylesheet.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+
+</head>
+
+<body>
+<section class="page-header">
+    <h1 class="project-name">TNKY C-values Submission Form<sub style="font-size:13px;">2.0-beta1</sub></h1>
+
+
+    <div id='login'>
+        <h2 class="project-tagline" id='status_text'>Please enter ID: <input id="uemail"></h2>
+        <a href="javascript:;" class="btn" id="submit_id_button">Submit ID</a>
+    </div>
+    <div style="display: none;" id="paramdiv">
+        <table id="parametertable" class="parametertable" width="100%">
+            <tr>
+                <td valign="top">
+                    <!-- NOT MINE https://www.w3schools.com/howto/howto_js_filter_dropdown.asp -->
+                    <div style="" id="familydiv" class="dropdown">
+                        Loading... please wait
+                    </div>
+                </td>
+                <td valign="top">
+                    Major Group:
+                    <p>
+                        <select class="search_select" id="majorgroup">
+                            <option class="search_option" value="any">Any</option>
+                            <option class="search_option" value="Fern or ally">Ferns or Fern Allies</option>
+                            <option class="search_option" value="Gymnosperm">Gymnosperms</option>
+                            <option class="search_option" value="Angiosperm - monocot">Angiosperms - Monocots</option>
+                            <option class="search_option" value="Angiosperm - dicot">Angiosperms - Dicots</option>
+                        </select>
+                </td>
+
+                <td valign="top">
+                    Tennessee Status:
+                    <p>
+                        <select class="search_select" id="tnstatus">
+                            <option class="search_option" value="any">Any</option>
+                            <option class="search_option" value="">None</option>
+                            <option class="search_option" value="T">T</option>
+                            <option class="search_option" value="E">E</option>
+                            <option class="search_option" value="S">S</option>
+                        </select>
+                </td>
+
+                <td valign="top">
+                    Kentucky Status:
+                    <p>
+                        <select class="search_select" id="kystatus">
+                            <option class="search_option" value="any">Any</option>
+                            <option class="search_option" value="">None</option>
+                            <option class="search_option" value="T">T</option>
+                            <option class="search_option" value="E">E</option>
+                            <option class="search_option" value="S">S</option>
+                        </select>
+                </td>
+
+                <td valign="top">
+                    Wetland Status (AGCP):
+                    <p>
+                        <select class="search_select" id="wetlanda">
+                            <option class="search_option" value="any">Any</option>
+                            <option class="search_option" value="">None</option>
+                            <option class="search_option" value="FAC">FAC</option>
+                            <option class="search_option" value="FACU">FACU</option>
+                            <option class="search_option" value="FACW">FACW</option>
+                            <option class="search_option" value="OBL">OBL</option>
+                            <option class="search_option" value="UPL">UPL</option>
+                        </select>
+                </td>
+
+                <td valign="top">
+                    Wetland Status (EMP):
+                    <p>
+                        <select class="search_select" id="wetlande">
+                            <option class="search_option" value="any">Any</option>
+                            <option class="search_option" value="">None</option>
+                            <option class="search_option" value="FAC">FAC</option>
+                            <option class="search_option" value="FACU">FACU</option>
+                            <option class="search_option" value="FACW">FACW</option>
+                            <option class="search_option" value="OBL">OBL</option>
+                            <option class="search_option" value="UPL">UPL</option>
+                        </select>
+                </td>
+
+                <!--
+                <td valign="top">
+                  C-Value Support:
+                  <select id="support">
+                    <option value="any">Any</option>
+                    <option value="strongsupport">Strongly supported</option>
+                    <option value="weaksupport">Weakly supported</option>
+                    <option value="nosupport">No support</option>
+                  </select>
+                </td>
+                -->
+
+                <td valign="top">
+                    Show finished?:
+                    <p>
+                        <select class="search_select" id="showfinished">
+                            <option class="search_option" value="any">Yes</option>
+                            <option class="search_option" value="no">No</option>
+                        </select>
+                </td>
+
+                <td valign="top">
+                    <div id="submit_search">
+                        <a href="javascript:;" type="submit" class="btn" id="submit_search_button">Submit</a>
+<!--                        <input type="submit" value="Submit" class="create"/>-->
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+</section>
+<br>
+<div class='real-body' id='real-body' style="display: none;">
+    <div id="output"></div>
+</div>
+
+<footer class="site-footer">
+    <span class="site-footer-credits">View this site's <a target="_blank"
+                                                          href="https://github.com/bgq527/shaw-cval-form-flask">source code</a>. Maintained by <a
+            target="_blank" href="https://github.com/bgq527">Dax</a><img class="text_scale"
+                                                                         src="https://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/160/apple/237/robot-face_1f916.png">.</span>
+</footer>
+<br>
+
+
+</body>
+
+<script>
+    var urow = -1;
+    var species_row = '';
+    var save_family = '';
+    var read_sheet = [];
+
+    var dropdown_css = {
+        'max-height': '30vh',
+        'overflow-y': 'auto'
+    }
+    
+    var family_search_css = {
+        'margin-bottom': '1rem',
+        'color': 'rgba(255, 255, 255, 1)',
+        'font-size': '15px',
+        'background': 'none',
+        'background-color': 'rgba(255, 255, 255, 0.08)',
+        'border-color': 'rgba(255, 255, 255, 0.2)',
+        'border-style': 'solid',
+        'border-width': '1px',
+        'border-radius': '0.3rem',
+        'transition': 'color 0.2s, background-color 0.2s, border-color 0.2s',
+    }
+
+    $(document).ready(function () {
+        $('#login').on('click', '#submit_id_button', function () {
+            var uid = $("#uemail").val();
+            $("#status_text").html("Checking...");
+
+            $.ajax({
+                url: "/login",
+                type: "get",
+                data: {uid: uid},
+                dataType: "json",
+                async: true,
+                success: function(response) {
+                    if (response.result === 1) {
+                        $("#paramdiv").css('overflow-y', 'auto');
+                        $("#paramdiv").css('display', 'initial');
+                        $("#real-body").css('display', 'initial');
+                        // $("#familydiv").css('display', 'initial');
+                        $("#submit_id_button").remove();
+                        $("#status_text").html('<p style="line-height: 0px;">Welcome back, ' + response.returns[2].toString() + '.</p><br><br><h2 style="font-weight: 200; line-height: 0px;">Search:</h2>');
+                        urow = response.returns[1].toString();
+
+                        $.ajax({
+                            url: "/generate_dropdown",
+                            type: "get",
+                            data: {urow: urow, save_family: ''},
+                            dataType: "html",
+                            async: true,
+                            success: function(dropdown){
+                                $("#familydiv").html(dropdown);
+                                $("#familydiv").css(family_search_css);
+                                $("#myDropdown").css(dropdown_css);
+
+                            }
+                        });
+                        // google.script.run.withSuccessHandler(show_dropdown).generate_dropdown(urow, read_sheet, '');
+                    } else {
+                        $("#status_text").html('INVALID! Please re-enter ID: <input id="uemail">');
+                    }
+
+                }
+            });
+
+
+        });
+
+        $('#submit_search').on('click', '#submit_search_button', function () {
+            var div = $("#output");
+            var uemail = $("#uemail").val();
+            var family = $("#familysearch").val();
+            var search_family = $("#myDropdown").val();
+            var majorgroup = $("#majorgroup").val();
+            var tnstatus = $("#tnstatus").val();
+            var kystatus = $("#kystatus").val();
+            var wetlanda = $("#wetlanda").val();
+            var wetlande = $("#wetlande").val();
+            // var support = document.getElementById('support');
+            var support = "any";
+            var finished = $("#showfinished").val();
+
+            if (family === "") {
+                div.html('Searching for species of any family with the given parameters. <strong>Please wait, this may take some time.</strong>');
+            } else {
+                div.html('Searching for species of ' + family + " with the given parameters. <strong>Please wait, this may take some time.</strong>");
+            }
+            save_family = family;
+
+            $.ajax({
+                url: "/generate_result",
+                type: "get",
+                data: {search_indices: -1, urow: urow, ufamily: family, umajorgroup: majorgroup, utnstatus: tnstatus, ukystatus: kystatus, uwetlanda: wetlanda, uwetlande: wetlande, usupport: support, ufinished: finished},
+                dataType: "json",
+                async: true,
+                success: function(data){
+                    search_indices = data.returns[2]
+                    $('#output').html(data.returns[1]);
+                }
+            });
+
+
+        });
+
+        $('#output').on('click', '.species', function () {
+            var expl_params = this.id.split(":lim:");
+            var species_name = expl_params[0];
+            var cval = expl_params[1];
+            var notes = expl_params[2];
+
+            $("#output").html('Loading information for: ' + species_name + ". <strong>Please wait, this may take some time.</strong>");
+
+            $.ajax({
+                url: "/gather_species_info",
+                type: "get",
+                data: {species_name: species_name, cval: cval, notes: notes},
+                dataType: "json",
+                async: true,
+                success: function(data){
+                    species_row = data.returns[0]
+                    $('#output').html(data.returns[1]);
+                }
+
+            });
+        });
+
+        $('#output').on('click', '#submit_cval_button', function () {
+            var expl_params = this.id.split(":lim:");
+            var species_name = expl_params[0];
+            var cval = expl_params[1];
+            var notes = expl_params[2];
+
+            var div = $("#output");
+            var uemail = $("#uemail").val();
+            var ucval = $("#ucval").val();
+            var unotes = $("#speciesnotes").val();
+            var family = $("#familysearch").val();
+            var search_family = $("#myDropdown").val();
+            var majorgroup = $("#majorgroup").val();
+            var tnstatus = $("#tnstatus").val();
+            var kystatus = $("#kystatus").val();
+            var wetlanda = $("#wetlanda").val();
+            var wetlande = $("#wetlande").val();
+            // var support = document.getElementById('support');
+            var support = "any";
+            var finished = $("#showfinished").val();
+
+            $('#myDropdown').html("Updating status... please wait");
+            $.ajax({
+                url: "/cval_to_sheet",
+                data: {urow: urow, species_row: species_row, ucval: ucval, unotes: unotes},
+                async: true,
+                success: function(){
+
+                    $.ajax({
+                            url: "/generate_dropdown",
+                            type: "get",
+                            data: {urow: urow, save_family: ''},
+                            dataType: "html",
+                            async: true,
+                            success: function(dropdown){
+                                $("#familydiv").html(dropdown);
+                                $("#familydiv").css(family_search_css);
+                                $("#myDropdown").css(dropdown_css);
+
+                                $.ajax({
+                                    url: "/generate_result",
+                                    type: "get",
+                                    data: {search_indices: search_indices, urow: urow, ufamily: family, umajorgroup: majorgroup, utnstatus: tnstatus, ukystatus: kystatus, uwetlanda: wetlanda, uwetlande: wetlande, usupport: support, ufinished: finished},
+                                    dataType: "json",
+                                    async: true,
+                                    success: function(data){
+                                        search_indices = data.returns[2]
+                                        $('#output').html(data.returns[1]);
+                                    }
+                                });
+                            }
+                    });
+                }
+            });
+
+            // google.script.run.cval_to_sheet(urow, species_row, ucval.value, unotes.value);
+            div.html('Submitting C-value and re-doing search... <strong>Please wait, this may take some time.</strong>');
+            // google.script.run.withSuccessHandler(regenerate_after_submit).generate_result(search_indices, urow, read_sheet, family.value, majorgroup.value, tnstatus.value, kystatus.value, wetlanda.value, wetlande.value, support.value, finished.value);
+
+
+        });
+
+
+
+    });
+
+    // Prevent forms from submitting.
+
+    function check_login(){
+        document.getElementById('status_text').innerHTML = "Checking...";
+    }
+
+    function preventFormSubmit() {
+        var forms = document.querySelectorAll('form');
+        for (var i = 0; i < forms.length; i++) {
+            forms[i].addEventListener('submit', function (event) {
+                event.preventDefault();
+            });
+        }
+    }
+
+    window.addEventListener('load', preventFormSubmit);
+
+    // NOT MINE https://www.w3schools.com/howto/howto_js_filter_dropdown.asp AND IS NOT MINE
+    function filterFunction() {
+        var input, filter, ul, li, a, i;
+        input = document.getElementById("familysearch");
+        filter = input.value.toUpperCase();
+        var div = document.getElementById("myDropdown");
+        div.style = "overflow-y: auto;";
+        a = div.getElementsByTagName("a");
+        for (i = 0; i < a.length; i++) {
+            txtValue = a[i].textContent || a[i].innerText;
+            if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                a[i].style.display = "";
+            } else {
+                a[i].style.display = "none";
+            }
+        }
+    }
+
+    // google.script.run.withSuccessHandler(show_email).getEmail();
+
+    function update_search(str_value) {
+        var family_input = document.getElementById("familysearch");
+        family_input.value = str_value;
+        filterFunction();
+    }
+
+</script>
+
+</html>
