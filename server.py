@@ -46,7 +46,7 @@ if not creds or not creds.valid:
 service = build('sheets', 'v4', credentials=creds)
 sheet = service.spreadsheets()
 
-data_sheet_read = sheet.values().get(spreadsheetId=data_ss_id, range="A:BI").execute()
+data_sheet_read = sheet.values().get(spreadsheetId=data_ss_id, range="A:BK").execute()
 data_sheet_values = data_sheet_read.get('values', [])
 
 app = Flask(__name__)
@@ -79,7 +79,7 @@ def login():
         return flask.jsonify({"result": 0})
     else:
         global data_sheet_read, data_sheet_values
-        data_sheet_read = sheet.values().get(spreadsheetId=data_ss_id, range="A:BI").execute()
+        data_sheet_read = sheet.values().get(spreadsheetId=data_ss_id, range="A:BK").execute()
         data_sheet_values = data_sheet_read.get('values', [])
         return flask.jsonify({"result": 1, "returns": [uid, urow, user_name]})
 
