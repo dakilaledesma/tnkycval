@@ -89,6 +89,12 @@ font-family: "Lato";
 
 .parametertable {
   text-align: center;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.parametertable td, .parametertable th {
+  padding: 10px;
 }
 
 #customers {

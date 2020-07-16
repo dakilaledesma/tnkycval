@@ -9,13 +9,14 @@
     <link rel="stylesheet" href="../static/styles/google-css-addon.css">
     <link rel="stylesheet" href="../static/styles/cayman.css">
     <link rel="stylesheet" href="../static/styles/stylesheet.css">
+    <link rel="stylesheet" href="../static/styles/style.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
 
 </head>
 
 <body>
 <section class="page-header">
-    <h1 class="project-name">TNKY C-values Submission Form<sub style="font-size:13px;">2.0-beta1</sub></h1>
+    <h1 class="project-name">TNKY C-values Submission Form<sub style="font-size:13px;">2.2.0</sub></h1>
 
 
     <div id='login'>
@@ -53,9 +54,8 @@
                             <option class="search_option" value="E">E</option>
                             <option class="search_option" value="S">S</option>
                         </select>
-                </td>
 
-                <td valign="top">
+                    <br><br><br>
                     Kentucky Status:
                     <p>
                         <select class="search_select" id="kystatus">
@@ -65,6 +65,10 @@
                             <option class="search_option" value="E">E</option>
                             <option class="search_option" value="S">S</option>
                         </select>
+                </td>
+
+                <td valign="top">
+
                 </td>
 
                 <td valign="top">
@@ -79,9 +83,8 @@
                             <option class="search_option" value="OBL">OBL</option>
                             <option class="search_option" value="UPL">UPL</option>
                         </select>
-                </td>
 
-                <td valign="top">
+                    <br><br><br>
                     Wetland Status (EMP):
                     <p>
                         <select class="search_select" id="wetlande">
@@ -94,6 +97,48 @@
                             <option class="search_option" value="UPL">UPL</option>
                         </select>
                 </td>
+
+                <td valign="top">
+                    Show invasive species
+                    <p>
+                        <select class="search_select" id="invasives">
+                            <option class="search_option" value="any">Any</option>
+                            <option class="search_option" value="only">Only show invasives</option>
+                            <option class="search_option" value="no">Don't show invasives</option>
+                        </select>
+
+                    <br><br><br>
+                    Show finished?:
+                    <p>
+                        <select class="search_select" id="showfinished">
+                            <option class="search_option" value="any">Yes</option>
+                            <option class="search_option" value="no">No</option>
+                        </select>
+
+{#                        <select class="search_select" id="minotherc">#}
+{#                            <option class="search_option" value="0">0</option>#}
+{#                            <option class="search_option" value="1">1</option>#}
+{#                            <option class="search_option" value="2">2</option>#}
+{#                            <option class="search_option" value="3">3</option>#}
+{#                            <option class="search_option" value="4">4</option>#}
+{#                            <option class="search_option" value="6">6</option>#}
+{#                            <option class="search_option" value="7">7</option>#}
+{#                            <option class="search_option" value="8">8</option>#}
+{#                            <option class="search_option" value="9">9</option>#}
+{#                            <option class="search_option" value="10+">10+</option>#}
+{#                        </select> to#}
+{#                        <select class="search_select" id="maxotherc">#}
+{#                            <option class="search_option" value="10+">10+</option>#}
+{#                            <option class="search_option" value="1">1</option>#}
+{#                            <option class="search_option" value="2">2</option>#}
+{#                            <option class="search_option" value="3">3</option>#}
+{#                            <option class="search_option" value="4">4</option>#}
+{#                            <option class="search_option" value="6">6</option>#}
+{#                            <option class="search_option" value="7">7</option>#}
+{#                            <option class="search_option" value="8">8</option>#}
+{#                            <option class="search_option" value="9">9</option>#}
+{##}
+{#                        </select>#}
 
                 <!--
                 <td valign="top">
@@ -108,21 +153,91 @@
                 -->
 
                 <td valign="top">
-                    Show finished?:
-                    <p>
-                        <select class="search_select" id="showfinished">
-                            <option class="search_option" value="any">Yes</option>
-                            <option class="search_option" value="no">No</option>
-                        </select>
-                </td>
-
-                <td valign="top">
                     <div id="submit_search">
                         <a href="javascript:;" type="submit" class="btn" id="submit_search_button">Submit</a>
-<!--                        <input type="submit" value="Submit" class="create"/>-->
+                        <!--                        <input type="submit" value="Submit" class="create"/>-->
                     </div>
                 </td>
             </tr>
+
+        </table>
+        <div id="advoptionsdiv">
+        <a href="javascript:;" id="showadvoptions" style="color: #FFFFFF"><u>Show advanced search options</u></a>
+        </div>
+        <table style="display: none;" id="advanced_options_table" class="parametertable" width="50%" >
+            <tr>
+                <td valign="top">
+                    Show species with max minus min differences of:
+                    <div slider id="slider-distance">
+                            <div>
+                                <div inverse-left style="width:100%;"></div>
+                                <div inverse-right style="width:100%;"></div>
+                                <div range style="left:0%;right:0%;"></div>
+                                <span thumb style="left:0%;"></span>
+                                <span thumb style="left:100%;"></span>
+                                <div sign style="left:0%;">
+                                    <span id="value">0</span>
+                                </div>
+                                <div sign style="left:100%;">
+                                    <span id="value">10</span>
+                                </div>
+                            </div>
+                            <input id="mindiffc" type="range" tabindex="0" value="0" max="10" min="0" step="1" oninput="
+                            this.value=Math.min(this.value,this.parentNode.childNodes[5].value-1);
+                            var value=(100/(parseInt(this.max)-parseInt(this.min)))*parseInt(this.value)-(100/(parseInt(this.max)-parseInt(this.min)))*parseInt(this.min);
+                            var children = this.parentNode.childNodes[1].childNodes;
+                            children[1].style.width=value+'%';
+                            children[5].style.left=value+'%';
+                            children[7].style.left=value+'%';children[11].style.left=value+'%';
+                            children[11].childNodes[1].innerHTML=this.value;" />
+
+                            <input id="maxdiffc" type="range" tabindex="0" value="10" max="10" min="0" step="1" oninput="
+                            this.value=Math.max(this.value,this.parentNode.childNodes[3].value-(-1));
+                            var value=(100/(parseInt(this.max)-parseInt(this.min)))*parseInt(this.value)-(100/(parseInt(this.max)-parseInt(this.min)))*parseInt(this.min);
+                            var children = this.parentNode.childNodes[1].childNodes;
+                            children[3].style.width=(100-value)+'%';
+                            children[5].style.right=(100-value)+'%';
+                            children[9].style.left=value+'%';children[13].style.left=value+'%';
+                            children[13].childNodes[1].innerHTML=this.value;" />
+                    </div>
+                </td>
+                <td>
+                    # of user submitted C-values:
+                    <div slider id="slider-distance">
+                            <div>
+                                <div inverse-left style="width:100%;"></div>
+                                <div inverse-right style="width:100%;"></div>
+                                <div range style="left:0%;right:0%;"></div>
+                                <span thumb style="left:0%;"></span>
+                                <span thumb style="left:100%;"></span>
+                                <div sign style="left:0%;">
+                                    <span id="value">0</span>
+                                </div>
+                                <div sign style="left:100%;">
+                                    <span id="value">25</span>
+                                </div>
+                            </div>
+                            <input id="minotherc" type="range" tabindex="0" value="0" max="25" min="0" step="1" oninput="
+                            this.value=Math.min(this.value,this.parentNode.childNodes[5].value-1);
+                            var value=(100/(parseInt(this.max)-parseInt(this.min)))*parseInt(this.value)-(100/(parseInt(this.max)-parseInt(this.min)))*parseInt(this.min);
+                            var children = this.parentNode.childNodes[1].childNodes;
+                            children[1].style.width=value+'%';
+                            children[5].style.left=value+'%';
+                            children[7].style.left=value+'%';children[11].style.left=value+'%';
+                            children[11].childNodes[1].innerHTML=this.value;" />
+
+                            <input id="maxotherc" type="range" tabindex="0" value="25" max="25" min="0" step="1" oninput="
+                            this.value=Math.max(this.value,this.parentNode.childNodes[3].value-(-1));
+                            var value=(100/(parseInt(this.max)-parseInt(this.min)))*parseInt(this.value)-(100/(parseInt(this.max)-parseInt(this.min)))*parseInt(this.min);
+                            var children = this.parentNode.childNodes[1].childNodes;
+                            children[3].style.width=(100-value)+'%';
+                            children[5].style.right=(100-value)+'%';
+                            children[9].style.left=value+'%';children[13].style.left=value+'%';
+                            children[13].childNodes[1].innerHTML=this.value;" />
+                    </div>
+                </td>
+            </tr>
+
         </table>
     </div>
 
@@ -153,7 +268,7 @@
         'max-height': '30vh',
         'overflow-y': 'auto'
     }
-    
+
     var family_search_css = {
         'margin-bottom': '1rem',
         'color': 'rgba(255, 255, 255, 1)',
@@ -178,7 +293,7 @@
                 data: {uid: uid},
                 dataType: "json",
                 async: true,
-                success: function(response) {
+                success: function (response) {
                     if (response.result === 1) {
                         $("#paramdiv").css('overflow-y', 'auto');
                         $("#paramdiv").css('display', 'initial');
@@ -194,7 +309,7 @@
                             data: {urow: urow, save_family: ''},
                             dataType: "html",
                             async: true,
-                            success: function(dropdown){
+                            success: function (dropdown) {
                                 $("#familydiv").html(dropdown);
                                 $("#familydiv").css(family_search_css);
                                 $("#myDropdown").css(dropdown_css);
@@ -222,6 +337,11 @@
             var kystatus = $("#kystatus").val();
             var wetlanda = $("#wetlanda").val();
             var wetlande = $("#wetlande").val();
+            var invasives = $("#invasives").val();
+            var mindiffc = $("#mindiffc").val();
+            var maxdiffc = $("#maxdiffc").val();
+            var minotherc = $("#minotherc").val();
+            var maxotherc = $("#maxotherc").val();
             // var support = document.getElementById('support');
             var support = "any";
             var finished = $("#showfinished").val();
@@ -236,10 +356,24 @@
             $.ajax({
                 url: "/generate_result",
                 type: "get",
-                data: {search_indices: -1, urow: urow, ufamily: family, umajorgroup: majorgroup, utnstatus: tnstatus, ukystatus: kystatus, uwetlanda: wetlanda, uwetlande: wetlande, usupport: support, ufinished: finished},
+                data: {
+                    search_indices: -1,
+                    urow: urow,
+                    ufamily: family,
+                    umajorgroup: majorgroup,
+                    utnstatus: tnstatus,
+                    ukystatus: kystatus,
+                    uwetlanda: wetlanda,
+                    uwetlande: wetlande,
+                    usupport: support,
+                    ufinished: finished,
+                    uinvasives: invasives,
+                    uotherc: minotherc + "-" + maxotherc,
+                    udiffc: mindiffc + "-" + maxdiffc,
+                },
                 dataType: "json",
                 async: true,
-                success: function(data){
+                success: function (data) {
                     search_indices = data.returns[2]
                     $('#output').html(data.returns[1]);
                 }
@@ -262,7 +396,7 @@
                 data: {species_name: species_name, cval: cval, notes: notes},
                 dataType: "json",
                 async: true,
-                success: function(data){
+                success: function (data) {
                     species_row = data.returns[0]
                     $('#output').html(data.returns[1]);
                 }
@@ -296,31 +430,42 @@
                 url: "/cval_to_sheet",
                 data: {urow: urow, species_row: species_row, ucval: ucval, unotes: unotes},
                 async: true,
-                success: function(){
+                success: function () {
 
                     $.ajax({
-                            url: "/generate_dropdown",
-                            type: "get",
-                            data: {urow: urow, save_family: ''},
-                            dataType: "html",
-                            async: true,
-                            success: function(dropdown){
-                                $("#familydiv").html(dropdown);
-                                $("#familydiv").css(family_search_css);
-                                $("#myDropdown").css(dropdown_css);
+                        url: "/generate_dropdown",
+                        type: "get",
+                        data: {urow: urow, save_family: ''},
+                        dataType: "html",
+                        async: true,
+                        success: function (dropdown) {
+                            $("#familydiv").html(dropdown);
+                            $("#familydiv").css(family_search_css);
+                            $("#myDropdown").css(dropdown_css);
 
-                                $.ajax({
-                                    url: "/generate_result",
-                                    type: "get",
-                                    data: {search_indices: search_indices, urow: urow, ufamily: family, umajorgroup: majorgroup, utnstatus: tnstatus, ukystatus: kystatus, uwetlanda: wetlanda, uwetlande: wetlande, usupport: support, ufinished: finished},
-                                    dataType: "json",
-                                    async: true,
-                                    success: function(data){
-                                        search_indices = data.returns[2]
-                                        $('#output').html(data.returns[1]);
-                                    }
-                                });
-                            }
+                            $.ajax({
+                                url: "/generate_result",
+                                type: "get",
+                                data: {
+                                    search_indices: search_indices,
+                                    urow: urow,
+                                    ufamily: family,
+                                    umajorgroup: majorgroup,
+                                    utnstatus: tnstatus,
+                                    ukystatus: kystatus,
+                                    uwetlanda: wetlanda,
+                                    uwetlande: wetlande,
+                                    usupport: support,
+                                    ufinished: finished
+                                },
+                                dataType: "json",
+                                async: true,
+                                success: function (data) {
+                                    search_indices = data.returns[2]
+                                    $('#output').html(data.returns[1]);
+                                }
+                            });
+                        }
                     });
                 }
             });
@@ -333,12 +478,22 @@
         });
 
 
+        $('#advoptionsdiv').on('click', '#showadvoptions', function () {
+            $("#advanced_options_table").css('display', 'initial');
+            $("#advoptionsdiv").html('<a href="javascript:;" id="hideadvoptions" style="color: #FFFFFF"><u>Hide advanced search options</u></a');
+        });
+
+        $('#advoptionsdiv').on('click', '#hideadvoptions', function () {
+            $("#advanced_options_table").css('display', 'none');
+            $("#advoptionsdiv").html('<a href="javascript:;" id="showadvoptions" style="color: #FFFFFF"><u>Show advanced search options</u></a');
+        });
+
 
     });
 
     // Prevent forms from submitting.
 
-    function check_login(){
+    function check_login() {
         document.getElementById('status_text').innerHTML = "Checking...";
     }
 

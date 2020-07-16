@@ -139,7 +139,11 @@ def generate_result():
         uwetlande = flask.request.args.get('uwetlande')
         usupport = flask.request.args.get('usupport')
         ufinished = flask.request.args.get('ufinished')
-        search_indices = f"{urow},{ufamily},{umajorgroup},{utnstatus},{ukystatus},{uwetlanda},{uwetlande},{usupport},{ufinished}"
+        uinvasives = flask.request.args.get('uinvasives')
+        uotherc = flask.request.args.get('uotherc')
+        udiffc = flask.request.args.get('udiffc')
+
+        search_indices = f"{urow},{ufamily},{umajorgroup},{utnstatus},{ukystatus},{uwetlanda},{uwetlande},{usupport},{ufinished},{uinvasives},{uotherc},{udiffc}"
     else:
         search_indices_list = search_indices.split(",")
         urow = int(search_indices_list[0])
@@ -151,10 +155,15 @@ def generate_result():
         uwetlande = search_indices_list[6]
         usupport = search_indices_list[7]
         ufinished = search_indices_list[8]
+        uinvasives = search_indices_list[9]
+        uotherc = search_indices_list[10]
+        udiffc = search_indices_list[11]
         
+    minotherc, maxotherc = [int(val) for val in uotherc.split("-")]
+    mindiffc, maxdiffc = [int(val) for val in udiffc.split("-")]
 
-    response_sheet_read = sheet.values().get(spreadsheetId=response_ss_id, range=f"A{int(urow) + 1}:KFC{int(urow) + 1}").execute()
-    response_sheet_values = response_sheet_read.get('values', [])[0]
+    response_sheet_read = sheet.values().get(spreadsheetId=response_ss_id, range=f"A1:KFC25").execute()
+    response_sheet_values = response_sheet_read.get('values', [])
 
     def check_equality(search_parameter, found_value):
         if search_parameter == "any":
@@ -163,32 +172,77 @@ def generate_result():
             return True
         elif search_parameter == "no" and found_value == "":
             return True
+        elif search_parameter == "only" and found_value != "":
+            return True
+        else:
+            return False
+        
+    def check_diff_range(min, max, found_value):
+        if found_value == -2:
+            return True
+        elif min <= found_value <= max:
+            return True
         else:
             return False
 
     srow = int(urow) + 1
 
-    ret_string = '<h2>Search results</h2><table style="width:80%" id=customers>'
-    ret_string += "<th>Species</th>" + "<th>Your Submitted C-value</th>" + "<th>Your Submitted Additional Notes</th>"
+    ret_string = '<h2>Search results</h2><table style="width:80%" id=customers><colgroup>'
+    ret_string += '<col span="1" style="width: 25%;">'
+    ret_string += '<col span="1" style="width: 5%;">'
+    ret_string += '<col span="1" style="width: 30%;">'
+    ret_string += '<col span="1" style="width: 5%;">'
+    ret_string += '<col span="1" style="width: 30%;">'
+    ret_string += '<col span="1" style="width: 5%;">'
+    ret_string += "</colgroup><th>Species</th>" + "<th>Your submitted C-value</th>" + "<th>Your submitted additional notes</th>"
+    ret_string += "<th># of user submitted C-vals</th>" + "<th>User submitted notes</th>" + "<th>Submitted C-val range</th>"
     new_search_indices = []
-    for row in range(len(data_sheet_values)):
+    for row in range(1, len(data_sheet_values)):
         cval_str = ""
         notes_str = ""
+
+        num_other_c = 0
+        num_other_notes = 0
+        other_notes_str = ""
+        range_str = ""
+        max_c = -1
+        min_c = -1
+
         species_col = int(row) + 9
         notes_col = int(row) + 3999
 
+
         if urow != -1:
             try:
-                if response_sheet_values[species_col] != '':
-                    cval_str = response_sheet_values[species_col]
+                if response_sheet_values[urow][species_col] != '':
+                    cval_str = response_sheet_values[urow][species_col]
             except IndexError:
                 pass
 
             try:
-                if response_sheet_values[notes_col] != '':
-                    notes_str = response_sheet_values[notes_col]
+                if response_sheet_values[urow][notes_col] != '':
+                    notes_str = response_sheet_values[urow][notes_col]
             except IndexError:
                 pass
+
+        for user_index in range(1, len(response_sheet_values)):
+            if response_sheet_values[user_index][1] != "Guest" and response_sheet_values[user_index][1] != "Dax":
+                this_ucval = response_sheet_values[user_index][species_col]
+                this_unotes = response_sheet_values[user_index][notes_col]
+
+                if this_ucval != '' and this_ucval != '*':
+                    num_other_c += 1
+
+                    if max_c == -1 or int(this_ucval) > max_c:
+                        max_c = int(this_ucval)
+
+                    if min_c == -1 or int(this_ucval) < min_c:
+                        min_c = int(this_ucval)
+
+
+                if this_unotes != '':
+                    num_other_notes += 1
+                    other_notes_str += f"<b>{num_other_notes}</b>: {this_unotes}<br>"
 
         if ufamily == "":
             ufamily = "any"
@@ -201,17 +255,32 @@ def generate_result():
                 check_equality(uwetlande.lower(), data_sheet_values[row][53].lower()) and \
                 check_equality(usupport.lower(), data_sheet_values[row][57].lower()) and \
                 check_equality(ufinished.lower(), cval_str) and \
-                (data_sheet_values[row][58] == "*" or data_sheet_values[row][59] == "*"):
+                check_diff_range(mindiffc, maxdiffc, max_c - min_c) and \
+                (minotherc <= num_other_c <= maxotherc) and \
+                (check_equality(uinvasives.lower(), data_sheet_values[row][60].lower()) or check_equality(uinvasives.lower(), data_sheet_values[row][61].lower())) and \
+                (data_sheet_values[row][58] == "*" or data_sheet_values[row][59] == "*" or data_sheet_values[row][60].lower() != "" or data_sheet_values[row][61].lower() != ""):
 
             new_search_indices.append(str(row))
             ret_string += "<tr>"
-            ret_string += '<td><a href="javascript:;" class="species" id="' + data_sheet_values[row][1] + ':lim:' + cval_str + ':lim:' + notes_str + '">' + data_sheet_values[row][1] + '</a></td>' + "<td>" + cval_str + "</td>" + "<td>" + notes_str + "</td>"
-            ret_string += "</tr>"
+            ret_string += '<td><a href="javascript:;" class="species" id="' + data_sheet_values[row][1] + ':lim:' + cval_str + ':lim:' + notes_str + '">' + data_sheet_values[row][
+                    1]
+
+            if data_sheet_values[row][60].lower() != "" or data_sheet_values[row][61].lower() != "":
+                ret_string += ' (invasive)'
+
+            if num_other_notes != 0:
+                other_notes_str = other_notes_str[:-4]
+
+            if max_c == -1:
+                range_str = "N/A"
+            else:
+                range_str = f"{min_c} to {max_c}"
+
+            ret_string += '</a></td>' + "<td>" + cval_str + "</td>" + "<td>" + notes_str + "</td>" + "<td>" + str(num_other_c) + "</td>" + "<td>" + other_notes_str + "<td>" + range_str + "</td></tr>"
 
     ret_string += "</table>"
     return flask.jsonify({"returns": [-1, ret_string, search_indices]})
     
-
 
 @app.route('/gather_species_info')
 def gather_species_info():
@@ -235,7 +304,15 @@ def gather_species_info():
     ret_string = '<table style="width:60%" id=customers><tr><td><h2 id="species_name">' + species_name + '</h2><a target="_blank" href="https://tnky.plantatlas.usf.edu/Plant.aspx?id=' + \
                  data_sheet_values[species_row][0] + '">View ' + species_name + ' on the TNKY Plant Atlas</a></td></tr>'
     ret_string += '<tr><td><strong>Give this species a C-value: </strong><select id="ucval">' + cval_default_select + '<option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="*">Mark as seen/Skip</option><option value="">Delete</option></select>'
-    ret_string += ' <input type="text" id="speciesnotes" placeholder="Additional notes" value="' + notes + '"/> <input type="button" class="create" value="Submit C-value" id="submit_cval_button"/></tr></td></table><br>'
+    ret_string += ' <input type="text" id="speciesnotes" placeholder="Additional notes" value="' + notes + '"/> <input type="button" class="create" value="Submit C-value" id="submit_cval_button"/></tr></td>'
+
+    if data_sheet_values[species_row][60] != "" and data_sheet_values[species_row][61] != "":
+        ret_string += f'<tr bgcolor="#ffe6e6"><td>This species is invasive in Tennessee, as it was found in the <a target="_blank" href="https://www.tnipc.org/invasive-plants/">TN-IPC Invasive Plants list</a>! Recommended C-value for TN: {data_sheet_values[species_row][60]}<br>This species is invasive in Kentucky, as it was found in the <a target="_blank" href="https://www.se-eppc.org/ky/KYEPPC_2013list.pdf">KY-EPPC Invasive Plants list</a>! Recommended C-value for KY: {data_sheet_values[species_row][61]}</td></tr>'
+    elif data_sheet_values[species_row][60] != "":
+        ret_string += f'<tr bgcolor="#ffe6e6"><td>This species is invasive in Tennessee, as it was found in the <a target="_blank" href="https://www.tnipc.org/invasive-plants/">TN-IPC Invasive Plants list</a>! Recommended C-value for TN: {data_sheet_values[species_row][60]}</td></tr>'
+    elif data_sheet_values[species_row][61] != "":
+        ret_string += f'<tr bgcolor="#ffe6e6"><td>This species is invasive in Kentucky, as it was found in the <a target="_blank" href="https://www.se-eppc.org/ky/KYEPPC_2013list.pdf">KY-EPPC Invasive Plants list</a>! Recommended C-value for KY: {data_sheet_values[species_row][61]}</td></tr>'
+    ret_string +='</table><br>'
 
     temp_ret_string = ret_string + '<hr width="60%"><h2>C-values</h2><table style="width:60%" id=customers><th>Location</th><th>C-value</th>'
     num_info = 0
