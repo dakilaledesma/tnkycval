@@ -16,7 +16,7 @@
 
 <body>
 <section class="page-header">
-    <h1 class="project-name">TNKY C-values Submission Form<sub style="font-size:13px;">2.2.0</sub></h1>
+    <h1 class="project-name">TNKY C-values Submission Form<sub style="font-size:13px;">2.2.2</sub></h1>
 
 
     <div id='login'>
@@ -115,31 +115,6 @@
                             <option class="search_option" value="no">No</option>
                         </select>
 
-{#                        <select class="search_select" id="minotherc">#}
-{#                            <option class="search_option" value="0">0</option>#}
-{#                            <option class="search_option" value="1">1</option>#}
-{#                            <option class="search_option" value="2">2</option>#}
-{#                            <option class="search_option" value="3">3</option>#}
-{#                            <option class="search_option" value="4">4</option>#}
-{#                            <option class="search_option" value="6">6</option>#}
-{#                            <option class="search_option" value="7">7</option>#}
-{#                            <option class="search_option" value="8">8</option>#}
-{#                            <option class="search_option" value="9">9</option>#}
-{#                            <option class="search_option" value="10+">10+</option>#}
-{#                        </select> to#}
-{#                        <select class="search_select" id="maxotherc">#}
-{#                            <option class="search_option" value="10+">10+</option>#}
-{#                            <option class="search_option" value="1">1</option>#}
-{#                            <option class="search_option" value="2">2</option>#}
-{#                            <option class="search_option" value="3">3</option>#}
-{#                            <option class="search_option" value="4">4</option>#}
-{#                            <option class="search_option" value="6">6</option>#}
-{#                            <option class="search_option" value="7">7</option>#}
-{#                            <option class="search_option" value="8">8</option>#}
-{#                            <option class="search_option" value="9">9</option>#}
-{##}
-{#                        </select>#}
-
                 <!--
                 <td valign="top">
                   C-Value Support:
@@ -164,6 +139,13 @@
         <div id="advoptionsdiv">
         <a href="javascript:;" id="showadvoptions" style="color: #FFFFFF"><u>Show advanced search options</u></a>
         </div>
+
+
+        <!--
+        Slider code within the following table is not mine and may be found here:
+        https://codeconvey.com/pure-css-range-slider-with-2-handles/
+        -->
+
         <table style="display: none;" id="advanced_options_table" class="parametertable" width="50%" >
             <tr>
                 <td valign="top">
@@ -237,7 +219,6 @@
                     </div>
                 </td>
             </tr>
-
         </table>
     </div>
 
@@ -295,36 +276,49 @@
                 async: true,
                 success: function (response) {
                     if (response.result === 1) {
-                        $("#paramdiv").css('overflow-y', 'auto');
-                        $("#paramdiv").css('display', 'initial');
-                        $("#real-body").css('display', 'initial');
-                        // $("#familydiv").css('display', 'initial');
-                        $("#submit_id_button").remove();
-                        $("#status_text").html('<p style="line-height: 0px;">Welcome back, ' + response.returns[2].toString() + '.</p><br><br><h2 style="font-weight: 200; line-height: 0px;">Search:</h2>');
                         urow = response.returns[1].toString();
+                        $("#status_text").html("Success! Retrieving new data sheet...");
+
+                        {#
+                        The following two sequential AJAX requests (chained success functions) unfortunately
+                        cannot be split into two separate AJAX requests. This is unfortunately due to SSL
+                        certificate errors that arise when sending two requests simultaneously to one
+                        Sheets API worker.
+                        #}
 
                         $.ajax({
-                            url: "/generate_dropdown",
+                            url: "/refresh_data_sheet",
                             type: "get",
-                            data: {urow: urow, save_family: ''},
-                            dataType: "html",
                             async: true,
-                            success: function (dropdown) {
-                                $("#familydiv").html(dropdown);
-                                $("#familydiv").css(family_search_css);
-                                $("#myDropdown").css(dropdown_css);
+                            success: function () {
+                                $("#paramdiv").css('overflow-y', 'auto');
+                                $("#paramdiv").css('display', 'initial');
+                                $("#real-body").css('display', 'initial');
+                                // $("#familydiv").css('display', 'initial');
+                                $("#submit_id_button").remove();
+                                $("#status_text").html('<p style="line-height: 0px;">Welcome back, ' + response.returns[2].toString() + '.</p><br><br><h2 style="font-weight: 200; line-height: 0px;">Search:</h2>');
 
+
+                                $.ajax({
+                                    url: "/generate_dropdown",
+                                    type: "get",
+                                    data: {urow: urow, save_family: ''},
+                                    dataType: "html",
+                                    async: true,
+                                    success: function (dropdown) {
+                                        $("#familydiv").html(dropdown);
+                                        $("#familydiv").css(family_search_css);
+                                        $("#myDropdown").css(dropdown_css);
+
+                                    }
+                                });
                             }
                         });
-                        // google.script.run.withSuccessHandler(show_dropdown).generate_dropdown(urow, read_sheet, '');
                     } else {
                         $("#status_text").html('INVALID! Please re-enter ID: <input id="uemail">');
                     }
-
                 }
             });
-
-
         });
 
         $('#submit_search').on('click', '#submit_search_button', function () {
@@ -431,52 +425,46 @@
                 data: {urow: urow, species_row: species_row, ucval: ucval, unotes: unotes},
                 async: true,
                 success: function () {
-
                     $.ajax({
-                        url: "/generate_dropdown",
+                        url: "/generate_result",
                         type: "get",
-                        data: {urow: urow, save_family: ''},
-                        dataType: "html",
+                        data: {
+                            search_indices: search_indices,
+                            urow: urow,
+                            ufamily: family,
+                            umajorgroup: majorgroup,
+                            utnstatus: tnstatus,
+                            ukystatus: kystatus,
+                            uwetlanda: wetlanda,
+                            uwetlande: wetlande,
+                            usupport: support,
+                            ufinished: finished
+                        },
+                        dataType: "json",
                         async: true,
-                        success: function (dropdown) {
-                            $("#familydiv").html(dropdown);
-                            $("#familydiv").css(family_search_css);
-                            $("#myDropdown").css(dropdown_css);
+                        success: function (data) {
+                            search_indices = data.returns[2]
+                            $('#output').html(data.returns[1]);
 
                             $.ajax({
-                                url: "/generate_result",
+                                url: "/generate_dropdown",
                                 type: "get",
-                                data: {
-                                    search_indices: search_indices,
-                                    urow: urow,
-                                    ufamily: family,
-                                    umajorgroup: majorgroup,
-                                    utnstatus: tnstatus,
-                                    ukystatus: kystatus,
-                                    uwetlanda: wetlanda,
-                                    uwetlande: wetlande,
-                                    usupport: support,
-                                    ufinished: finished
-                                },
-                                dataType: "json",
+                                data: {urow: urow, save_family: ''},
+                                dataType: "html",
                                 async: true,
-                                success: function (data) {
-                                    search_indices = data.returns[2]
-                                    $('#output').html(data.returns[1]);
+                                success: function (dropdown) {
+                                    $("#familydiv").html(dropdown);
+                                    $("#familydiv").css(family_search_css);
+                                    $("#myDropdown").css(dropdown_css);
+
                                 }
                             });
                         }
                     });
                 }
             });
-
-            // google.script.run.cval_to_sheet(urow, species_row, ucval.value, unotes.value);
             div.html('Submitting C-value and re-doing search... <strong>Please wait, this may take some time.</strong>');
-            // google.script.run.withSuccessHandler(regenerate_after_submit).generate_result(search_indices, urow, read_sheet, family.value, majorgroup.value, tnstatus.value, kystatus.value, wetlanda.value, wetlande.value, support.value, finished.value);
-
-
         });
-
 
         $('#advoptionsdiv').on('click', '#showadvoptions', function () {
             $("#advanced_options_table").css('display', 'initial');
@@ -487,11 +475,7 @@
             $("#advanced_options_table").css('display', 'none');
             $("#advoptionsdiv").html('<a href="javascript:;" id="showadvoptions" style="color: #FFFFFF"><u>Show advanced search options</u></a');
         });
-
-
     });
-
-    // Prevent forms from submitting.
 
     function check_login() {
         document.getElementById('status_text').innerHTML = "Checking...";
@@ -508,7 +492,10 @@
 
     window.addEventListener('load', preventFormSubmit);
 
-    // NOT MINE https://www.w3schools.com/howto/howto_js_filter_dropdown.asp AND IS NOT MINE
+    {#
+    The following dropdown search code is not mine and may be found here:
+    https://www.w3schools.com/howto/howto_js_filter_dropdown.asp
+    #}
     function filterFunction() {
         var input, filter, ul, li, a, i;
         input = document.getElementById("familysearch");
@@ -525,8 +512,6 @@
             }
         }
     }
-
-    // google.script.run.withSuccessHandler(show_email).getEmail();
 
     function update_search(str_value) {
         var family_input = document.getElementById("familysearch");
