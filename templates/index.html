@@ -16,14 +16,19 @@
 
 <body>
 <section class="page-header">
-    <h1 class="project-name">TNKY C-values Submission Form<sub style="font-size:13px;">2.2.2</sub></h1>
+    <h1 class="project-name">TNKY C-values Submission Form<sub style="font-size:13px;">2.3.0</sub></h1>
 
 
     <div id='login'>
         <h2 class="project-tagline" id='status_text'>Please enter ID: <input id="uemail"></h2>
+        <div style="display: none;" id="progressdiv" class="dropdown">
+            Loading... please wait
+        </div>
         <a href="javascript:;" class="btn" id="submit_id_button">Submit ID</a>
     </div>
     <div style="display: none;" id="paramdiv">
+        <br>
+        <h2 class="project-tagline" style="font-weight: 200; line-height: 0px;">Search:</h2>
         <table id="parametertable" class="parametertable" width="100%">
             <tr>
                 <td valign="top">
@@ -32,6 +37,7 @@
                         Loading... please wait
                     </div>
                 </td>
+
                 <td valign="top">
                     Major Group:
                     <p>
@@ -296,19 +302,22 @@
                                 $("#real-body").css('display', 'initial');
                                 // $("#familydiv").css('display', 'initial');
                                 $("#submit_id_button").remove();
-                                $("#status_text").html('<p style="line-height: 0px;">Welcome back, ' + response.returns[2].toString() + '.</p><br><br><h2 style="font-weight: 200; line-height: 0px;">Search:</h2>');
+                                $("#status_text").html('<p style="line-height: 0px;">Welcome back, ' + response.returns[2].toString() + '.</p>');
 
 
                                 $.ajax({
                                     url: "/generate_dropdown",
                                     type: "get",
                                     data: {urow: urow, save_family: ''},
-                                    dataType: "html",
+                                    dataType: "json",
                                     async: true,
-                                    success: function (dropdown) {
-                                        $("#familydiv").html(dropdown);
+                                    success: function (response) {
+                                        $("#familydiv").html(response.dropdown);
                                         $("#familydiv").css(family_search_css);
                                         $("#myDropdown").css(dropdown_css);
+
+                                        $("#progressdiv").css('display', 'initial');
+                                        $("#progressdiv").html(response.progress);
 
                                     }
                                 });
@@ -450,13 +459,15 @@
                                 url: "/generate_dropdown",
                                 type: "get",
                                 data: {urow: urow, save_family: ''},
-                                dataType: "html",
+                                dataType: "json",
                                 async: true,
-                                success: function (dropdown) {
-                                    $("#familydiv").html(dropdown);
-                                    $("#familydiv").css(family_search_css);
-                                    $("#myDropdown").css(dropdown_css);
+                                success: function (response) {
+                                  $("#familydiv").html(response.dropdown);
+                                  $("#familydiv").css(family_search_css);
+                                  $("#myDropdown").css(dropdown_css);
 
+                                  $("#progressdiv").css('display', 'initial');
+                                  $("#progressdiv").html(response.progress);
                                 }
                             });
                         }

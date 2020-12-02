@@ -81,6 +81,9 @@ def refresh_read_sheet():
 
 @app.route('/generate_dropdown')
 def generate_dropdown():
+    '''
+    Actually generates both the dropdown and the progressbar.
+    '''
     save_family = flask.request.args.get('save_family')
     urow = int(flask.request.args.get('urow'))
 
@@ -88,17 +91,23 @@ def generate_dropdown():
                                              range=f"A{int(urow) + 1}:KFC{int(urow) + 1}").execute()
     response_sheet_values = response_sheet_read.get('values', [])[0]
 
-    ret_string = f'''<input type="text" 
-                            value="{save_family}" 
-                            placeholder="Search family" 
-                            id="familysearch" 
+    dropdown_ret_string = f'''<input type="text"
+                            value="{save_family}"
+                            placeholder="Search family"
+                            id="familysearch"
                             onkeyup="filterFunction()">
 
                      <div id="myDropdown" class="dropdown-content">'''
 
+
     family_array = []
     full_family_array = [str(row[54]).lower() for row in data_sheet_values]
 
+
+    total_species_count = 0
+    finished_species_count = 0
+
+    finished_families_count = 0
     for row in range(1, len(data_sheet_values)):
         family_string = str(data_sheet_values[row][54]).lower()
 
@@ -109,43 +118,93 @@ def generate_dropdown():
             for i in all_occurrences:
                 include_species = "*" in [data_sheet_values[i][58], data_sheet_values[i][59]]
                 occurrence_col = i + 9
-                if response_sheet_values[occurrence_col] == '' and include_species:
-                    complete = 0
-                elif response_sheet_values[occurrence_col] == '*' and include_species:
-                    complete = 1
+                if include_species:
+                    if response_sheet_values[occurrence_col] == '':
+                        complete = 0
+                    elif response_sheet_values[occurrence_col] in ['*', '?']:
+                        complete = 1
+                    elif response_sheet_values[occurrence_col] != '':
+                        finished_species_count += 1
+
+                    total_species_count += 1
 
             """
             For whatever reason, <br> breaks the dropdown list but <p></p> does not.
             """
             if complete == 2:
-                ret_string += f'''  <p>
+                dropdown_ret_string += f'''  <p>
                                     </p>
-                                    <a  href="javascript:;" 
-                                        onclick="update_search(this.innerText)" 
+                                    <a  href="javascript:;"
+                                        onclick="update_search(this.innerText)"
                                         style="color: #75e091;">
                                     {family_string}
                                     </a>'''
+                finished_families_count += 1
             elif complete == 1:
-                ret_string += f'''  <p>
+                dropdown_ret_string += f'''  <p>
                                     </p>
-                                    <a  href="javascript:;" 
-                                        onclick="update_search(this.innerText)" 
+                                    <a  href="javascript:;"
+                                        onclick="update_search(this.innerText)"
                                         style="color: yellow;">
                                     {family_string}
                                     </a>'''
+                finished_families_count += 1
             else:
-                ret_string += f'''  <p>
+                dropdown_ret_string += f'''  <p>
                                     </p>
-                                    <a  href="javascript:;" 
-                                        onclick="update_search(this.innerText)" 
+                                    <a  href="javascript:;"
+                                        onclick="update_search(this.innerText)"
                                         style="color: white;">
                                     {family_string}
                                     </a>'''
 
             family_array.append(family_string)
 
-    ret_string += "</div></div>"
-    return ret_string
+    dropdown_ret_string += "</div></div>"
+    pb_ret_string = f'''
+    <div>
+    To date, you\'ve completed:
+        <table class="progresstb" style="width: 90%; text-align: center; margin-left: auto; margin-right: auto; padding: 1px;">
+            <colgroup>
+                <col span="1" style="width: 50%;">
+                <col span="1" style="width: 50%;">
+            </colgroup>
+            <tr>
+                <td style="padding: 4px;">
+                    <div class="progressbg" style="margin-bottom: 1rem;
+                      color: rgba(255, 255, 255, 1);
+                      font-size: 15px;
+                      background: none;
+                      background-color: rgba(255, 255, 255, 0.08);
+                      border-color: rgba(255, 255, 255, 0.2);
+                      border-style: solid;
+                      border-width: 1px;
+                      border-radius: 0.3rem;
+                      transition: color 0.2s, background-color 0.2s, border-color 0.2s;">
+                        <div class="progressfg" style="  width: {(finished_families_count / len(family_array)) * 100}%; height: 30px; background-color: #4CAF50; line-height: 30px; color: white;">{finished_families_count}/{len(family_array)}⠀Families</div>
+                    </div>
+                </td>
+                <td style="padding: 4px;">
+                    <div class="progressbg" style="margin-bottom: 1rem;
+                      color: rgba(255, 255, 255, 1);
+                      font-size: 15px;
+                      background: none;
+                      background-color: rgba(255, 255, 255, 0.08);
+                      border-color: rgba(255, 255, 255, 0.2);
+                      border-style: solid;
+                      border-width: 1px;
+                      border-radius: 0.3rem;
+                      transition: color 0.2s, background-color 0.2s, border-color 0.2s;">
+                        <div class="progressfg" style="  width: {(finished_species_count / total_species_count) * 100}%; height: 30px; background-color: #4CAF50; line-height: 30px; color: white;">{finished_species_count}/{total_species_count}⠀Species</div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+    '''
+
+
+    return flask.jsonify({"dropdown": dropdown_ret_string, "progress": pb_ret_string})
 
 
 @app.route('/generate_result')
@@ -181,7 +240,7 @@ def generate_result():
         uinvasives = search_indices_list[9]
         uotherc = search_indices_list[10]
         udiffc = search_indices_list[11]
-        
+
     minotherc, maxotherc = [int(val) for val in uotherc.split("-")]
     mindiffc, maxdiffc = [int(val) for val in udiffc.split("-")]
 
@@ -199,7 +258,7 @@ def generate_result():
             return True
         else:
             return False
-        
+
     def check_diff_range(min, max, found_value):
         if found_value == -2:
             return True
@@ -208,7 +267,7 @@ def generate_result():
         else:
             return False
 
-    ret_string = '''<h2>Search results</h2><table style="width:80%" id=customers>
+    dropdown_ret_string = '''<h2>Search results</h2><table style="width:80%" id=customers>
                     <colgroup>
                         <col span="1" style="width: 25%;">
                         <col span="1" style="width: 5%;">
@@ -217,7 +276,7 @@ def generate_result():
                         <col span="1" style="width: 30%;">
                         <col span="1" style="width: 5%;">
                     </colgroup>
-                    
+
                     <th>Species</th>
                     <th>Your submitted C-value</th>
                     <th>Your submitted additional notes</th>
@@ -257,7 +316,7 @@ def generate_result():
                 this_ucval = response_sheet_values[user_index][species_col]
                 this_unotes = response_sheet_values[user_index][notes_col]
 
-                if this_ucval != '' and this_ucval != '*':
+                if this_ucval not in ['', '*', '?']:
                     num_other_c += 1
 
                     if max_c == -1 or int(this_ucval) > max_c:
@@ -304,10 +363,10 @@ def generate_result():
                 ]):
 
             new_search_indices.append(str(row))
-            ret_string += f'''  <tr>
+            dropdown_ret_string += f'''  <tr>
                                     <td>
-                                        <a  href="javascript:;" 
-                                            class="species" 
+                                        <a  href="javascript:;"
+                                            class="species"
                                             id="{data_sheet_values[row][1]}:lim:{cval_str}:lim:{notes_str}">
                                             {data_sheet_values[row][1]}
                                             {"(invasive)" if "" not in [tn_invasive_value, ky_invasive_value] else ""}
@@ -320,9 +379,9 @@ def generate_result():
                                     <td>{"N/A" if max_c == -1 else f"{min_c} to {max_c}"}</td>
                                 </tr>'''
 
-    ret_string += "</table>"
-    return flask.jsonify({"returns": [-1, ret_string, search_indices]})
-    
+    dropdown_ret_string += "</table>"
+    return flask.jsonify({"returns": [-1, dropdown_ret_string, search_indices]})
+
 
 @app.route('/gather_species_info')
 def gather_species_info():
@@ -338,6 +397,8 @@ def gather_species_info():
 
     if cval == "*":
         cval_default_select = '<option value="*" selected disabled hidden>Mark as seen/Skip</option>'
+    elif cval == "?":
+        cval_default_select = '<option value="?" selected disabled hidden>Need more information</option>'
     elif cval == "":
         cval_default_select = '<option value="" selected disabled hidden>Select value</option>'
     else:
@@ -347,12 +408,12 @@ def gather_species_info():
     for value in range(0, 11):
         option_string += f'<option value="{value}">{value}</option>'
 
-    ret_string = f'''<table style="width:60%"
+    dropdown_ret_string = f'''<table style="width:60%"
                             id=customers>
                         <tr>
                             <td>
                                 <h2 id="species_name">{species_name}</h2>
-                                <a target="_blank" 
+                                <a target="_blank"
                                     href="https://tnky.plantatlas.usf.edu/Plant.aspx?id={data_sheet_values[species_row][0]}">
                                     View {species_name} on the TNKY Plant Atlas</a>
                             </td>
@@ -363,61 +424,62 @@ def gather_species_info():
                                 <select id="ucval">{cval_default_select}
                                     {''.join([f'<option value="{value}">{value}</option>' for value in range(0, 11)])}
                                     <option value="*">Mark as seen/Skip</option>
+                                    <option value="?">Need more information</option>
                                     <option value="">Delete</option>
                                 </select>
-                                <input type="text" 
-                                    id="speciesnotes" 
+                                <input type="text"
+                                    id="speciesnotes"
                                     placeholder="Additional notes" value="{notes}"/>
-                                <input type="button" class="create" 
-                                    value="Submit C-value" 
+                                <input type="button" class="create"
+                                    value="Submit C-value"
                                     id="submit_cval_button"/>
                             </td>
                         </tr>'''
 
     if "" not in [data_sheet_values[species_row][60], data_sheet_values[species_row][61]]:
-        ret_string += f'''  <tr bgcolor="#ffe6e6">
+        dropdown_ret_string += f'''  <tr bgcolor="#ffe6e6">
                                 <td>
-                                    This species is invasive in Tennessee, as it was found in the 
-                                    <a  target="_blank" 
+                                    This species is invasive in Tennessee, as it was found in the
+                                    <a  target="_blank"
                                         href="https://www.tnipc.org/invasive-plants/">
                                         TN-IPC Invasive Plants list
-                                    </a>! 
+                                    </a>!
                                     Recommended C-value for TN: {data_sheet_values[species_row][60]}
                                     <br>
-                                    This species is invasive in Kentucky, as it was found in the 
-                                    <a  target="_blank" 
+                                    This species is invasive in Kentucky, as it was found in the
+                                    <a  target="_blank"
                                         href="https://www.se-eppc.org/ky/KYEPPC_2013list.pdf">
                                         KY-EPPC Invasive Plants list
-                                    </a>! 
+                                    </a>!
                                     Recommended C-value for KY: {data_sheet_values[species_row][61]}
                                 </td>
                             </tr>'''
     elif data_sheet_values[species_row][60] != "":
-        ret_string += f'''  <tr bgcolor="#ffe6e6">
+        dropdown_ret_string += f'''  <tr bgcolor="#ffe6e6">
                                 <td>
-                                    This species is invasive in Tennessee, as it was found in the 
+                                    This species is invasive in Tennessee, as it was found in the
                                     <a target="_blank"
                                         href="https://www.tnipc.org/invasive-plants/">
                                         TN-IPC Invasive Plants list
-                                    </a>! 
+                                    </a>!
                                     Recommended C-value for TN: {data_sheet_values[species_row][60]}
                                 </td>
                             </tr>'''
     elif data_sheet_values[species_row][61] != "":
-        ret_string += f'''  <tr bgcolor="#ffe6e6">
+        dropdown_ret_string += f'''  <tr bgcolor="#ffe6e6">
                                 <td>
-                                    This species is invasive in Kentucky, as it was found in the 
-                                    <a target="_blank" 
+                                    This species is invasive in Kentucky, as it was found in the
+                                    <a target="_blank"
                                         href="https://www.se-eppc.org/ky/KYEPPC_2013list.pdf">
                                         KY-EPPC Invasive Plants list
-                                    </a>! 
+                                    </a>!
                                     Recommended C-value for KY: {data_sheet_values[species_row][61]}
                                 </td>
                             </tr>'''
 
-    ret_string +='</table><br>'
+    dropdown_ret_string +='</table><br>'
 
-    temp_ret_string = f'''  {ret_string}
+    temp_dropdown_ret_string = f'''  {dropdown_ret_string}
                             <hr width="60%">
                             <h2>C-values</h2>
                             <table style="width:60%" id=customers>
@@ -438,19 +500,19 @@ def gather_species_info():
 
     for col in range(2, 47):
         if data_sheet_values[species_row][col] != "" and data_sheet_values[0][col] not in exclude_columns:
-            temp_ret_string += f''' <tr>
+            temp_dropdown_ret_string += f''' <tr>
                                         <td>{data_sheet_values[0][col]}</td>
                                         <td>{data_sheet_values[species_row][col]}</td>
                                     </tr>
                                 '''
             num_info = num_info + 1
 
-    temp_ret_string += '''  </table>
+    temp_dropdown_ret_string += '''  </table>
                             <br>'''
 
-    ret_string = temp_ret_string if num_info != 0 else ret_string
+    dropdown_ret_string = temp_dropdown_ret_string if num_info != 0 else dropdown_ret_string
 
-    temp_ret_string = f'''  {ret_string}
+    temp_dropdown_ret_string = f'''  {dropdown_ret_string}
                             <hr width="60%">
                             <h2>General Information</h2>
                             <table style="width:60%" id=customers>
@@ -460,19 +522,19 @@ def gather_species_info():
 
     for col in range(47, 54):
         if data_sheet_values[species_row][col] != "":
-            temp_ret_string += f''' <tr>
+            temp_dropdown_ret_string += f''' <tr>
                                         <td>{data_sheet_values[0][col]}</td>
                                         <td>{data_sheet_values[species_row][col]}</td>
                                     </tr>
                                 '''
             num_info = num_info + 1
 
-    temp_ret_string += '''  </table>
+    temp_dropdown_ret_string += '''  </table>
                             <br>'''
 
-    ret_string = temp_ret_string if num_info != 0 else ret_string
+    dropdown_ret_string = temp_dropdown_ret_string if num_info != 0 else dropdown_ret_string
 
-    return flask.jsonify({"returns": [species_row, ret_string]})
+    return flask.jsonify({"returns": [species_row, dropdown_ret_string]})
 
 
 @app.route('/cval_to_sheet')
