@@ -369,7 +369,7 @@ def generate_result():
                                             class="species"
                                             id="{data_sheet_values[row][1]}:lim:{cval_str}:lim:{notes_str}">
                                             {data_sheet_values[row][1]}
-                                            {"(invasive)" if "" not in [tn_invasive_value, ky_invasive_value] else ""}
+                                            {"(non-native)" if "" not in [tn_invasive_value, ky_invasive_value] else ""}
                                         </a>
                                     </td>
                                     <td>{cval_str}</td>
