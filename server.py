@@ -11,6 +11,8 @@ from google.auth.transport.requests import Request
 import sys
 import pandas as pd
 import numpy as np
+import time
+from collections import OrderedDict
 
 """
 Taken from the Python version of Google's Sheets API Quickstart:
@@ -558,16 +560,22 @@ def cval_to_sheet():
 
 @app.route('/stats_panel')
 def stats_panel():
+    response_sheet_read = sheet.values().get(spreadsheetId=response_ss_id,
+                                             range=f"A1:KFC25").execute()
+    response_sheet_values = response_sheet_read.get('values', [])
+    df = pd.DataFrame(data=response_sheet_values)
     id = flask.request.args.get('uid')
 
-    current_ids = sheet.values().get(spreadsheetId=response_ss_id,
-                                     range="A1:C25").execute()
+    # headers = df.iloc[0]
+    # responses = pd.DataFrame(df.values[1:], columns=headers)
 
-    values = current_ids.get('values', [])
+    for row in range(1, len(df)):
+        if id == df.iloc[row][0] and df.iloc[row][2] == "Yes":
+            start_time = time.time()
+            us_string, user_family_dict = user_stats(df)
+            qs_string, pu_string = summary_stats(df, user_family_dict)
 
-    for row in range(1, len(values)):
-        if id == values[row][0] and values[row][2] == "Yes":
-            qs_string, pu_string = summary_stats()
+            print(time.time() - start_time)
             return_html = """
             
                     <html>
@@ -596,25 +604,31 @@ def stats_panel():
                     }
                     </style>
                     </head>
-                    <body>
-                    Hey Joey,
-
-                    <br>
-                    <br>
-
-                    Here are your quick stats. It looks ugly right now but that will change after I get things up and going. For
-                    now, I just wanted something that works.
-
-                    <br>
-                    <br>
-                    
-                    <h2> Quick stats </h2>
                     """
 
-            return_html += qs_string
-            return_html += "<h2> Per-user Stats (still work-in-progress)</h2>"
-            return_html += pu_string
-            return_html += "</body></html>"
+            return_html += f"""
+                <body>
+                    Hey Joey,
+                    <br>
+                    <br>
+                    Here is your stats panel. It looks ugly right now but that will change after I get things up and
+                    going. For now, I just wanted something that works.
+                    <br>
+                    <br>
+                    <h2> Quick stats </h2>
+                    {qs_string}
+                    <br>
+                    <br>
+                    <h2> Per-user Stats (only "active" users) </h2>
+                    {pu_string}
+                    <br>
+                    <br>
+                    <h2> Per-user C-value Family Stats (only "active" users) </h2>
+                    {us_string}
+                </body>
+            </html>
+            """
+
 
             return return_html
     else:
@@ -625,16 +639,13 @@ def stats_panel():
                 """
 
 
-def summary_stats():
-    response_sheet_read = sheet.values().get(spreadsheetId=response_ss_id,
-                                             range=f"A1:KFC25").execute()
-    response_sheet_values = response_sheet_read.get('values', [])
-    df = pd.DataFrame(data=response_sheet_values)
-
+def summary_stats(df, user_family_dict):
     headers = df.iloc[0]
     responses = pd.DataFrame(df.values[1:], columns=headers)
 
+
     headers = set(responses.columns[4:])
+    headers.remove("end")
 
     five_resp = set()
     three_resp = set()
@@ -647,45 +658,40 @@ def summary_stats():
 
     numbers = set()
     for key in headers:
-        if key != "end":
-            num_filled = len(list(filter(None, np.array(responses[key].T)[0])))
-            num_comments = len(list(filter(None, np.array(responses[key].T)[1])))
-            numbers.add(num_filled)
+        key_responses = np.array(responses[key].T)
+        num_filled = len(list(filter(None, key_responses[0])))
+        num_comments = len(list(filter(None, key_responses[1])))
+        numbers.add(num_filled)
 
-            if num_comments >= 5:
-                five_com.add(key.replace(".1", ''))
-                three_com.add(key.replace(".1", ''))
-                one_com.add(key.replace(".1", ''))
-                all_sp.add(key.replace(".1", ''))
-            elif num_comments >= 3:
-                three_com.add(key.replace(".1", ''))
-                one_com.add(key.replace(".1", ''))
-                all_sp.add(key.replace(".1", ''))
-            elif num_comments >= 1:
-                one_com.add(key.replace(".1", ''))
-                all_sp.add(key.replace(".1", ''))
+        if num_comments >= 5:
+            five_com.add(key)
+            three_com.add(key)
+            one_com.add(key)
+            all_sp.add(key)
+        elif num_comments >= 3:
+            three_com.add(key)
+            one_com.add(key)
+            all_sp.add(key)
+        elif num_comments >= 1:
+            one_com.add(key)
+            all_sp.add(key)
 
-            if num_filled >= 5:
-                five_resp.add(key.replace(".1", ''))
-                one_resp.add(key.replace(".1", ''))
-                all_sp.add(key.replace(".1", ''))
-            elif num_filled >= 3:
-                three_resp.add(key.replace(".1", ''))
-                one_resp.add(key.replace(".1", ''))
-                all_sp.add(key.replace(".1", ''))
-            elif num_filled >= 1:
-                one_resp.add(key.replace(".1", ''))
-                all_sp.add(key.replace(".1", ''))
+        if num_filled >= 5:
+            five_resp.add(key)
+            one_resp.add(key)
+            all_sp.add(key)
+        elif num_filled >= 3:
+            three_resp.add(key)
+            one_resp.add(key)
+            all_sp.add(key)
+        elif num_filled >= 1:
+            one_resp.add(key)
+            all_sp.add(key)
 
     user_stats_dict = {}
     for row in range(len(responses)):
         row = responses.iloc[row]
         user_stats_dict[row["User name (shown on the form)"]] = len(list(filter(None, row)))
-
-    num_users = 0
-    for i in range(24):
-        if responses.loc[i].isnull().sum() not in [7592, 7594]:
-            num_users += 1
 
     all_sp = list(all_sp)
     all_sp.sort()
@@ -723,10 +729,13 @@ def summary_stats():
     qs_string += "<tr><td>Active Users</td>" + ''.join([f"<td>{i}</td>" for i in active_users]) + "</tr>"
     qs_string += "<tr><td>Inactive Users</td>" + ''.join([f"<td>{i}</td>" for i in inactive_users]) + "</tr></table>"
 
-    pu_string = f'<table id="customers">{"".join([f"<th>{i}</th>" for i in ["User", "Number of C-values & comments submitted"]])}'
+    pu_string = f'<table id="customers">{"".join([f"<th>{i}</th>" for i in ["User", "Number of C-values & comments submitted", "Number of families finished (with skips)"]])}'
     for k, v in user_stats_dict.items():
-        pu_string += f"<tr><td>{k}</td><td>{int(v) - 4}</td>"
+        num_finished = int(v) - 4
+        if num_finished != 0:
+            pu_string += f"<tr><td>{k}</td><td>{int(v) - 4}</td><td>{user_family_dict.get(k)}</td>"
     pu_string += "</table>"
+
 
 
     # nl = "<br>"
@@ -736,6 +745,83 @@ def summary_stats():
     # qs_string += f"Species with values (C-val or comment)<br>{nl.join(all_sp)}<br><br>"
 
     return qs_string, pu_string
+
+
+def user_stats(df):
+    headers = df.iloc[0]
+    responses = pd.DataFrame(df.values[1:], columns=headers)
+
+    user_stats_dict = {}
+    user_family_dict = {}
+
+    for user_idx in range(len(responses)):
+        family_array = set()
+        full_family_array = [str(row[54]).lower() for row in data_sheet_values]
+
+        finished_species_count = 0
+        skipped_species_count = 0
+        finished_families_count = 0
+        stats_dict = {}
+        for row in range(1, len(data_sheet_values)):
+            family_string = str(data_sheet_values[row][54]).lower()
+            if family_string not in family_array and "*" in [data_sheet_values[row][58], data_sheet_values[row][59]]:
+                all_occurrences = [i for i in range(len(full_family_array)) if full_family_array[i] == family_string]
+                complete = 2
+
+                finished_family_species_count = 0
+                skipped_family_species_count = 0
+                for i in all_occurrences:
+                    include_species = "*" in [data_sheet_values[i][58], data_sheet_values[i][59]]
+                    occurrence_col = i + 9
+                    if include_species:
+                        if responses.iloc[user_idx][occurrence_col] == '':
+                            complete = 0
+                        elif responses.iloc[user_idx][occurrence_col] in ['*', '?']:
+                            complete = 1
+                            skipped_family_species_count += 1
+                        elif responses.iloc[user_idx][occurrence_col] != '':
+                            finished_family_species_count += 1
+
+                if complete == 2 or complete == 1:
+                    finished_families_count += 1
+
+                skipped_family_species_count += finished_family_species_count
+                finished_species_count += finished_family_species_count
+                skipped_species_count += skipped_family_species_count
+
+                stats_dict[family_string] = {"finished": [str(finished_family_species_count), str(len(all_occurrences))],
+                                             "finished_skips": [str(skipped_family_species_count), str(len(all_occurrences))]}
+
+                family_array.add(family_string)
+
+        stats_dict = OrderedDict(sorted(stats_dict.items()))
+        if skipped_species_count > 0:
+            user_stats_dict[responses.iloc[user_idx][1]] = stats_dict
+            user_family_dict[responses.iloc[user_idx][1]] = "/".join([str(finished_families_count), str(len(family_array))])
+
+
+    us_string = ""
+    for user, stats_dict in user_stats_dict.items():
+        us_string += f"<h4> {user} <h4>"
+        us_string += f"<table id=customers><th>Family Name</th><th>Completed (no skips)</th><th>Completed (with skips)</th>"
+        for family_string, value in stats_dict.items():
+            us_string += f"""
+                <tr>
+                  <td>{family_string}</td><td>{'/'.join(value.get("finished"))}</td><td>{'/'.join(value.get("finished_skips"))}</td>
+                </tr>
+            """
+        us_string += "</table><br><br>"
+
+        # us_string += f"""
+        #             <h4> {user} <h4>
+        #             <table id=customers>
+        #                 {''.join([f'<th>{i}</th>' for i in family_strings])}
+        #                 <tr>
+        #                   {''.join(f'<td>{"/".join(i)}</td>' for i in values)}
+        #                 </tr>
+        #             </table><br><br>
+        #         """
+    return us_string, user_family_dict
 
 
 if __name__ == '__main__':
