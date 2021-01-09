@@ -9,6 +9,8 @@ from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 import sys
+import pandas as pd
+import numpy as np
 
 """
 Taken from the Python version of Google's Sheets API Quickstart:
@@ -54,20 +56,21 @@ def login():
     id = flask.request.args.get('uid')
 
     current_ids = sheet.values().get(spreadsheetId=response_ss_id,
-                                     range="A1:B25").execute()
+                                     range="A1:C25").execute()
 
     values = current_ids.get('values', [])
 
     for row in range(1, len(values)):
         if id == values[row][0]:
             user_name = values[row][1]
+            stats_access = values[row][2]
             urow = row
             uid = id
             break
     else:
         return flask.jsonify({"result": 0})
 
-    return flask.jsonify({"result": 1, "returns": [uid, urow, user_name]})
+    return flask.jsonify({"result": 1, "returns": [uid, urow, user_name, stats_access]})
 
 
 @app.route('/refresh_data_sheet')
@@ -99,10 +102,8 @@ def generate_dropdown():
 
                      <div id="myDropdown" class="dropdown-content">'''
 
-
     family_array = []
     full_family_array = [str(row[54]).lower() for row in data_sheet_values]
-
 
     total_species_count = 0
     finished_species_count = 0
@@ -202,7 +203,6 @@ def generate_dropdown():
         </table>
     </div>
     '''
-
 
     return flask.jsonify({"dropdown": dropdown_ret_string, "progress": pb_ret_string})
 
@@ -358,10 +358,9 @@ def generate_result():
                 check_diff_range(mindiffc, maxdiffc, max_c - min_c),
                 (minotherc <= num_other_c <= maxotherc),
                 True in [check_equality(uinvasives.lower(), tn_invasive_value),
-                          check_equality(uinvasives.lower(), ky_invasive_value)],
+                         check_equality(uinvasives.lower(), ky_invasive_value)],
                 '*' in [include_1, include_2] or "" not in [tn_invasive_value, ky_invasive_value],
                 ]):
-
             new_search_indices.append(str(row))
             dropdown_ret_string += f'''  <tr>
                                     <td>
@@ -477,7 +476,7 @@ def gather_species_info():
                                 </td>
                             </tr>'''
 
-    dropdown_ret_string +='</table><br>'
+    dropdown_ret_string += '</table><br>'
 
     temp_dropdown_ret_string = f'''  {dropdown_ret_string}
                             <hr width="60%">
@@ -555,6 +554,188 @@ def cval_to_sheet():
         spreadsheetId=response_ss_id, range=f"R{int(urow) + 1}C{notes_col}", valueInputOption="USER_ENTERED",
         body={"values": [[unotes]]}).execute()
     return '1'
+
+
+@app.route('/stats_panel')
+def stats_panel():
+    id = flask.request.args.get('uid')
+
+    current_ids = sheet.values().get(spreadsheetId=response_ss_id,
+                                     range="A1:C25").execute()
+
+    values = current_ids.get('values', [])
+
+    for row in range(1, len(values)):
+        if id == values[row][0] and values[row][2] == "Yes":
+            qs_string, pu_string = summary_stats()
+            return_html = """
+            
+                    <html>
+                    <head>
+                    <style>
+                    #customers td,
+                    #customers th {
+                      border: 1px solid #ddd;
+                      padding: 8px;
+                    }
+                    
+                    #customers tr:nth-child(even) {
+                      background-color: #f2f2f2;
+                    }
+                    
+                    #customers tr:hover {
+                      background-color: #ddd;
+                    }
+                    
+                    #customers th {
+                      padding-top: 12px;
+                      padding-bottom: 12px;
+                      text-align: left;
+                      background-color: #007B78;
+                      color: white;
+                    }
+                    </style>
+                    </head>
+                    <body>
+                    Hey Joey,
+
+                    <br>
+                    <br>
+
+                    Here are your quick stats. It looks ugly right now but that will change after I get things up and going. For
+                    now, I just wanted something that works.
+
+                    <br>
+                    <br>
+                    
+                    <h2> Quick stats </h2>
+                    """
+
+            return_html += qs_string
+            return_html += "<h2> Per-user Stats (still work-in-progress)</h2>"
+            return_html += pu_string
+            return_html += "</body></html>"
+
+            return return_html
+    else:
+        return """
+                401 Authorization Error.
+
+                If you are who I think you are, please click the correct link and/or user ID from the email I have sent you :)
+                """
+
+
+def summary_stats():
+    response_sheet_read = sheet.values().get(spreadsheetId=response_ss_id,
+                                             range=f"A1:KFC25").execute()
+    response_sheet_values = response_sheet_read.get('values', [])
+    df = pd.DataFrame(data=response_sheet_values)
+
+    headers = df.iloc[0]
+    responses = pd.DataFrame(df.values[1:], columns=headers)
+
+    headers = set(responses.columns[4:])
+
+    five_resp = set()
+    three_resp = set()
+    one_resp = set()
+    five_com = set()
+    three_com = set()
+    one_com = set()
+
+    all_sp = set()
+
+    numbers = set()
+    for key in headers:
+        if key != "end":
+            num_filled = len(list(filter(None, np.array(responses[key].T)[0])))
+            num_comments = len(list(filter(None, np.array(responses[key].T)[1])))
+            numbers.add(num_filled)
+
+            if num_comments >= 5:
+                five_com.add(key.replace(".1", ''))
+                three_com.add(key.replace(".1", ''))
+                one_com.add(key.replace(".1", ''))
+                all_sp.add(key.replace(".1", ''))
+            elif num_comments >= 3:
+                three_com.add(key.replace(".1", ''))
+                one_com.add(key.replace(".1", ''))
+                all_sp.add(key.replace(".1", ''))
+            elif num_comments >= 1:
+                one_com.add(key.replace(".1", ''))
+                all_sp.add(key.replace(".1", ''))
+
+            if num_filled >= 5:
+                five_resp.add(key.replace(".1", ''))
+                one_resp.add(key.replace(".1", ''))
+                all_sp.add(key.replace(".1", ''))
+            elif num_filled >= 3:
+                three_resp.add(key.replace(".1", ''))
+                one_resp.add(key.replace(".1", ''))
+                all_sp.add(key.replace(".1", ''))
+            elif num_filled >= 1:
+                one_resp.add(key.replace(".1", ''))
+                all_sp.add(key.replace(".1", ''))
+
+    user_stats_dict = {}
+    for row in range(len(responses)):
+        row = responses.iloc[row]
+        user_stats_dict[row["User name (shown on the form)"]] = len(list(filter(None, row)))
+
+    num_users = 0
+    for i in range(24):
+        if responses.loc[i].isnull().sum() not in [7592, 7594]:
+            num_users += 1
+
+    all_sp = list(all_sp)
+    all_sp.sort()
+    five_resp = list(five_resp)
+    five_resp.sort()
+    one_resp = list(one_resp)
+    one_resp.sort()
+    five_com = list(five_com)
+    five_com.sort()
+    one_com = list(one_com)
+    one_com.sort()
+
+    summary_value_dict = {"Number of five response C-value species": len(five_resp),
+                          "Number of three response C-value species": len(three_resp),
+                          "Number of one response C-value species": len(one_resp),
+                          "Number of five response comment species": len(five_com),
+                          "Number of three response comment species": len(three_com),
+                          "Number of one response comment species": len(one_com),
+                          "Number of species with values (C-val or comment)": len(all_sp)
+                          }
+
+    qs_string = '<table id="customers">'
+    for k, v in summary_value_dict.items():
+        qs_string += f"<tr><td>{k}</td><td>{v}</td></tr>"
+    qs_string += "</table><br><br>"
+
+    qs_string += '<h4> User activity (determined if they have submitted at least one value/comment)<h4> <table id="customers">'
+    active_users = []
+    inactive_users = []
+    for k, v in user_stats_dict.items():
+        if v == 4:
+            inactive_users.append(k)
+        else:
+            active_users.append(k)
+    qs_string += "<tr><td>Active Users</td>" + ''.join([f"<td>{i}</td>" for i in active_users]) + "</tr>"
+    qs_string += "<tr><td>Inactive Users</td>" + ''.join([f"<td>{i}</td>" for i in inactive_users]) + "</tr></table>"
+
+    pu_string = f'<table id="customers">{"".join([f"<th>{i}</th>" for i in ["User", "Number of C-values & comments submitted"]])}'
+    for k, v in user_stats_dict.items():
+        pu_string += f"<tr><td>{k}</td><td>{int(v) - 4}</td>"
+    pu_string += "</table>"
+
+
+    # nl = "<br>"
+    # qs_string += f"Five response C-value species<br>{nl.join(five_resp)}<br><br>"
+    # qs_string += f"Three response C-value species<br>{nl.join(three_resp)}<br><br>"
+    # qs_string += f"One response C-value species<br>{nl.join(one_resp)}<br><br>"
+    # qs_string += f"Species with values (C-val or comment)<br>{nl.join(all_sp)}<br><br>"
+
+    return qs_string, pu_string
 
 
 if __name__ == '__main__':
