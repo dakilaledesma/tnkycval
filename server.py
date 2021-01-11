@@ -583,71 +583,49 @@ def stats_panel():
     for row in range(1, len(df)):
         if id == df.iloc[row][0] and df.iloc[row][2] == "Yes":
             start_time = time.time()
-            us_string, user_family_dict = user_stats(df)
-            qs_string, pu_string = summary_stats(df, user_family_dict)
+
+            success = False
+            for i in range(3):
+                if not success:
+                    try:
+                        us_string, user_family_dict = user_stats(df)
+                        qs_string, pu_string = summary_stats(df, user_family_dict)
+                        success = True
+                    except:
+                        response_sheet_read = sheet.values().get(spreadsheetId=response_ss_id,
+                                                                 range=f"A1:KFC25").execute()
+                        response_sheet_values = response_sheet_read.get('values', [])
+                        df = pd.DataFrame(data=response_sheet_values)
+                if success:
+                    break
 
             print(time.time() - start_time)
-            return_html = """
-            
-                    <html>
-                    <head>
-                    <style>
-                    #customers td,
-                    #customers th {
-                      border: 1px solid #ddd;
-                      padding: 8px;
-                    }
-                    
-                    #customers tr:nth-child(even) {
-                      background-color: #f2f2f2;
-                    }
-                    
-                    #customers tr:hover {
-                      background-color: #ddd;
-                    }
-                    
-                    #customers th {
-                      padding-top: 12px;
-                      padding-bottom: 12px;
-                      text-align: left;
-                      background-color: #007B78;
-                      color: white;
-                    }
-                    </style>
-                    </head>
-                    """
 
-            return_html += f"""
-                <body>
-                    Hey Joey,
-                    <br>
-                    <br>
-                    Here is your stats panel. It looks ugly right now but that will change after I get things up and
-                    going. For now, I just wanted something that works.
-                    <br>
-                    <br>
+            return_html = f"""
+                    <h1> Statistics <h1>
+                    <hr style="width:60%;">
                     <h2> Quick stats </h2>
                     {qs_string}
                     <br>
+                    <hr style="width:60%;">
                     <br>
                     <h2> Per-user Stats (only "active" users) </h2>
                     {pu_string}
                     <br>
+                    <hr style="width:60%;">
                     <br>
                     <h2> Per-user C-value Family Stats (only "active" users) </h2>
                     {us_string}
-                </body>
-            </html>
             """
 
-
-            return return_html
+            return flask.jsonify({"html": return_html})
     else:
-        return """
+        return_html = """
                 401 Authorization Error.
 
-                If you are who I think you are, please click the correct link and/or user ID from the email I have sent you :)
+                If you are who I think you are, please refresh this page and try again using the correct user ID.
                 """
+        return flask.jsonify({"html": return_html})
 
 
 
@@ -723,7 +701,7 @@ def summary_stats(df, user_family_dict):
                           "Number of species with values (C-val or comment)": len(all_sp)
                           }
 
-    qs_string = '<table id="customers">'
+    qs_string = '<table style="width: auto;" id="customers">'
     for k, v in summary_value_dict.items():
         qs_string += f"<tr><td>{k}</td><td>{v}</td></tr>"
     qs_string += "</table><br><br>"
@@ -739,14 +717,12 @@ def summary_stats(df, user_family_dict):
     qs_string += "<tr><td>Active Users</td>" + ''.join([f"<td>{i}</td>" for i in active_users]) + "</tr>"
     qs_string += "<tr><td>Inactive Users</td>" + ''.join([f"<td>{i}</td>" for i in inactive_users]) + "</tr></table>"
 
-    pu_string = f'<table id="customers">{"".join([f"<th>{i}</th>" for i in ["User", "Number of C-values & comments submitted", "Number of families finished (with skips)"]])}'
+    pu_string = f'<table style="width: auto;" id="customers">{"".join([f"<th>{i}</th>" for i in ["User", "Number of C-values & comments submitted", "Number of families finished (with skips)"]])}'
     for k, v in user_stats_dict.items():
         num_finished = int(v) - 5
         if num_finished != 0:
-            pu_string += f"<tr><td>{k}</td><td>{int(v) - 5}</td><td>{user_family_dict.get(k)}</td>"
+            pu_string += f"<tr><td>{k}</td><td>{int(v) - 5}</td><td>{user_family_dict.get(k)}</td></tr>"
     pu_string += "</table>"
-
-
 
     # nl = "<br>"
     # qs_string += f"Five response C-value species<br>{nl.join(five_resp)}<br><br>"
@@ -812,8 +788,8 @@ def user_stats(df):
 
     us_string = ""
     for user, stats_dict in user_stats_dict.items():
-        us_string += f"<h4> {user} <h4>"
-        us_string += f"<table id=customers><th>Family Name</th><th>Completed (no skips)</th><th>Completed (with skips)</th>"
+        us_string += f"<h4> {user} </h4>"
+        us_string += f'<table style="width: auto;" id="customers"><th>Family Name</th><th>Completed (no skips)</th><th>Completed (with skips)</th>'
         for family_string, value in stats_dict.items():
             us_string += f"""
                 <tr>
@@ -823,7 +799,7 @@ def user_stats(df):
         us_string += "</table><br><br>"
 
         # us_string += f"""
-        #             <h4> {user} <h4>
+        #             <h4> {user} </h4>
         #             <table id=customers>
         #                 {''.join([f'<th>{i}</th>' for i in family_strings])}
         #                 <tr>
