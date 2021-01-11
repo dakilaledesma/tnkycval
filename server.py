@@ -722,7 +722,7 @@ def summary_stats(df, user_family_dict):
     active_users = []
     inactive_users = []
     for k, v in user_stats_dict.items():
-        if v == 4:
+        if v == 5:
             inactive_users.append(k)
         else:
             active_users.append(k)
