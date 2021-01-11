@@ -1,5 +1,8 @@
 from __future__ import print_function
 
+import socket
+socket.setdefaulttimeout(4000)
+
 from flask import Flask, render_template, get_template_attribute
 import flask
 
@@ -42,7 +45,7 @@ if not creds or not creds.valid:
 service = build('sheets', 'v4', credentials=creds)
 sheet = service.spreadsheets()
 
-data_sheet_read = sheet.values().get(spreadsheetId=data_ss_id, range="A:BK").execute()
+data_sheet_read = sheet.values().get(spreadsheetId=data_ss_id, range="A:BL").execute()
 data_sheet_values = data_sheet_read.get('values', [])
 
 app = Flask(__name__)
@@ -114,22 +117,23 @@ def generate_dropdown():
     for row in range(1, len(data_sheet_values)):
         family_string = str(data_sheet_values[row][54]).lower()
 
-        if family_string not in family_array and "*" in [data_sheet_values[row][58], data_sheet_values[row][59]]:
+        # if family_string not in family_array and "*" in [data_sheet_values[row][58], data_sheet_values[row][59]]:
+        if family_string not in family_array:
             all_occurrences = [i for i in range(len(full_family_array)) if full_family_array[i] == family_string]
             complete = 2
 
             for i in all_occurrences:
-                include_species = "*" in [data_sheet_values[i][58], data_sheet_values[i][59]]
+                # include_species = "*" in [data_sheet_values[i][58], data_sheet_values[i][59]]
                 occurrence_col = i + 9
-                if include_species:
-                    if response_sheet_values[occurrence_col] == '':
-                        complete = 0
-                    elif response_sheet_values[occurrence_col] in ['*', '?']:
-                        complete = 1
-                    elif response_sheet_values[occurrence_col] != '':
-                        finished_species_count += 1
+                # if include_species:
+                if response_sheet_values[occurrence_col] == '':
+                    complete = 0
+                elif response_sheet_values[occurrence_col] in ['*', '?']:
+                    complete = 1
+                elif response_sheet_values[occurrence_col] != '':
+                    finished_species_count += 1
 
-                    total_species_count += 1
+                total_species_count += 1
 
             """
             For whatever reason, <br> breaks the dropdown list but <p></p> does not.
@@ -361,7 +365,7 @@ def generate_result():
                 (minotherc <= num_other_c <= maxotherc),
                 True in [check_equality(uinvasives.lower(), tn_invasive_value),
                          check_equality(uinvasives.lower(), ky_invasive_value)],
-                '*' in [include_1, include_2] or "" not in [tn_invasive_value, ky_invasive_value],
+                # '*' in [include_1, include_2] or "" not in [tn_invasive_value, ky_invasive_value],
                 ]):
             new_search_indices.append(str(row))
             dropdown_ret_string += f'''  <tr>
@@ -639,6 +643,7 @@ def stats_panel():
                 """
 
 
+
 def summary_stats(df, user_family_dict):
     headers = df.iloc[0]
     responses = pd.DataFrame(df.values[1:], columns=headers)
@@ -656,12 +661,10 @@ def summary_stats(df, user_family_dict):
 
     all_sp = set()
 
-    numbers = set()
     for key in headers:
-        key_responses = np.array(responses[key].T)
+        key_responses = np.array(responses[key]).T
         num_filled = len(list(filter(None, key_responses[0])))
         num_comments = len(list(filter(None, key_responses[1])))
-        numbers.add(num_filled)
 
         if num_comments >= 5:
             five_com.add(key)
@@ -722,7 +725,7 @@ def summary_stats(df, user_family_dict):
     active_users = []
     inactive_users = []
     for k, v in user_stats_dict.items():
-        if v == 5:
+        if v <= 5:
             inactive_users.append(k)
         else:
             active_users.append(k)
