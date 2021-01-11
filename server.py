@@ -45,7 +45,7 @@ if not creds or not creds.valid:
 service = build('sheets', 'v4', credentials=creds)
 sheet = service.spreadsheets()
 
-data_sheet_read = sheet.values().get(spreadsheetId=data_ss_id, range="A:BM").execute()
+data_sheet_read = sheet.values().get(spreadsheetId=data_ss_id, range="A:BN").execute()
 data_sheet_values = data_sheet_read.get('values', [])
 
 app = Flask(__name__)
@@ -81,7 +81,7 @@ def login():
 @app.route('/refresh_data_sheet')
 def refresh_read_sheet():
     global data_sheet_read, data_sheet_values
-    data_sheet_read = sheet.values().get(spreadsheetId=data_ss_id, range="A:BM").execute()
+    data_sheet_read = sheet.values().get(spreadsheetId=data_ss_id, range="A:BN").execute()
     data_sheet_values = data_sheet_read.get('values', [])
 
     return '1'
@@ -481,6 +481,13 @@ def gather_species_info():
                                     Recommended C-value for KY: {data_sheet_values[species_row][61]}
                                 </td>
                             </tr>'''
+
+    if data_sheet_values[species_row][62] != "":
+        dropdown_ret_string += f'''  <tr bgcolor="#fffee0">
+                                        <td>
+                                            Recommended C-value for TN and KY: {data_sheet_values[species_row][62]}
+                                        </td>
+                                    </tr>'''
 
     dropdown_ret_string += '</table><br>'
 
