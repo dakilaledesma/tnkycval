@@ -750,23 +750,22 @@ def user_stats(df):
         stats_dict = {}
         for row in range(1, len(data_sheet_values)):
             family_string = str(data_sheet_values[row][54]).lower()
-            if family_string not in family_array and "*" in [data_sheet_values[row][58], data_sheet_values[row][59]]:
+            if family_string not in family_array:
                 all_occurrences = [i for i in range(len(full_family_array)) if full_family_array[i] == family_string]
                 complete = 2
 
                 finished_family_species_count = 0
                 skipped_family_species_count = 0
                 for i in all_occurrences:
-                    include_species = "*" in [data_sheet_values[i][58], data_sheet_values[i][59]]
                     occurrence_col = i + 9
-                    if include_species:
-                        if responses.iloc[user_idx][occurrence_col] == '':
-                            complete = 0
-                        elif responses.iloc[user_idx][occurrence_col] in ['*', '?']:
-                            complete = 1
-                            skipped_family_species_count += 1
-                        elif responses.iloc[user_idx][occurrence_col] != '':
-                            finished_family_species_count += 1
+
+                    if responses.iloc[user_idx][occurrence_col] == '':
+                        complete = 0
+                    elif responses.iloc[user_idx][occurrence_col] in ['*', '?']:
+                        complete = 1
+                        skipped_family_species_count += 1
+                    elif responses.iloc[user_idx][occurrence_col] != '':
+                        finished_family_species_count += 1
 
                 if complete == 2 or complete == 1:
                     finished_families_count += 1
