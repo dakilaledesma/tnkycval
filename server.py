@@ -1,5 +1,8 @@
 from __future__ import print_function
 
+import socket
+socket.setdefaulttimeout(4000)
+
 from flask import Flask, render_template, get_template_attribute
 import flask
 
@@ -9,6 +12,10 @@ from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 import sys
+import pandas as pd
+import numpy as np
+import time
+from collections import OrderedDict
 
 """
 Taken from the Python version of Google's Sheets API Quickstart:
@@ -38,7 +45,7 @@ if not creds or not creds.valid:
 service = build('sheets', 'v4', credentials=creds)
 sheet = service.spreadsheets()
 
-data_sheet_read = sheet.values().get(spreadsheetId=data_ss_id, range="A:BK").execute()
+data_sheet_read = sheet.values().get(spreadsheetId=data_ss_id, range="A:BN").execute()
 data_sheet_values = data_sheet_read.get('values', [])
 
 app = Flask(__name__)
@@ -54,26 +61,27 @@ def login():
     id = flask.request.args.get('uid')
 
     current_ids = sheet.values().get(spreadsheetId=response_ss_id,
-                                     range="A1:B25").execute()
+                                     range="A1:C25").execute()
 
     values = current_ids.get('values', [])
 
     for row in range(1, len(values)):
         if id == values[row][0]:
             user_name = values[row][1]
+            stats_access = values[row][2]
             urow = row
             uid = id
             break
     else:
         return flask.jsonify({"result": 0})
 
-    return flask.jsonify({"result": 1, "returns": [uid, urow, user_name]})
+    return flask.jsonify({"result": 1, "returns": [uid, urow, user_name, stats_access]})
 
 
 @app.route('/refresh_data_sheet')
 def refresh_read_sheet():
     global data_sheet_read, data_sheet_values
-    data_sheet_read = sheet.values().get(spreadsheetId=data_ss_id, range="A:BK").execute()
+    data_sheet_read = sheet.values().get(spreadsheetId=data_ss_id, range="A:BN").execute()
     data_sheet_values = data_sheet_read.get('values', [])
 
     return '1'
@@ -99,10 +107,8 @@ def generate_dropdown():
 
                      <div id="myDropdown" class="dropdown-content">'''
 
-
     family_array = []
     full_family_array = [str(row[54]).lower() for row in data_sheet_values]
-
 
     total_species_count = 0
     finished_species_count = 0
@@ -111,22 +117,23 @@ def generate_dropdown():
     for row in range(1, len(data_sheet_values)):
         family_string = str(data_sheet_values[row][54]).lower()
 
-        if family_string not in family_array and "*" in [data_sheet_values[row][58], data_sheet_values[row][59]]:
+        # if family_string not in family_array and "*" in [data_sheet_values[row][58], data_sheet_values[row][59]]:
+        if family_string not in family_array:
             all_occurrences = [i for i in range(len(full_family_array)) if full_family_array[i] == family_string]
             complete = 2
 
             for i in all_occurrences:
-                include_species = "*" in [data_sheet_values[i][58], data_sheet_values[i][59]]
+                # include_species = "*" in [data_sheet_values[i][58], data_sheet_values[i][59]]
                 occurrence_col = i + 9
-                if include_species:
-                    if response_sheet_values[occurrence_col] == '':
-                        complete = 0
-                    elif response_sheet_values[occurrence_col] in ['*', '?']:
-                        complete = 1
-                    elif response_sheet_values[occurrence_col] != '':
-                        finished_species_count += 1
+                # if include_species:
+                if response_sheet_values[occurrence_col] == '':
+                    complete = 0
+                elif response_sheet_values[occurrence_col] in ['*', '?']:
+                    complete = 1
+                elif response_sheet_values[occurrence_col] != '':
+                    finished_species_count += 1
 
-                    total_species_count += 1
+                total_species_count += 1
 
             """
             For whatever reason, <br> breaks the dropdown list but <p></p> does not.
@@ -202,7 +209,6 @@ def generate_dropdown():
         </table>
     </div>
     '''
-
 
     return flask.jsonify({"dropdown": dropdown_ret_string, "progress": pb_ret_string})
 
@@ -358,10 +364,9 @@ def generate_result():
                 check_diff_range(mindiffc, maxdiffc, max_c - min_c),
                 (minotherc <= num_other_c <= maxotherc),
                 True in [check_equality(uinvasives.lower(), tn_invasive_value),
-                          check_equality(uinvasives.lower(), ky_invasive_value)],
-                '*' in [include_1, include_2] or "" not in [tn_invasive_value, ky_invasive_value],
+                         check_equality(uinvasives.lower(), ky_invasive_value)],
+                # '*' in [include_1, include_2] or "" not in [tn_invasive_value, ky_invasive_value],
                 ]):
-
             new_search_indices.append(str(row))
             dropdown_ret_string += f'''  <tr>
                                     <td>
@@ -477,7 +482,14 @@ def gather_species_info():
                                 </td>
                             </tr>'''
 
-    dropdown_ret_string +='</table><br>'
+    if data_sheet_values[species_row][62] != "":
+        dropdown_ret_string += f'''  <tr bgcolor="#fffee0">
+                                        <td>
+                                            Draft C-value for TN and KY: {data_sheet_values[species_row][62]}
+                                        </td>
+                                    </tr>'''
+
+    dropdown_ret_string += '</table><br>'
 
     temp_dropdown_ret_string = f'''  {dropdown_ret_string}
                             <hr width="60%">
@@ -555,6 +567,247 @@ def cval_to_sheet():
         spreadsheetId=response_ss_id, range=f"R{int(urow) + 1}C{notes_col}", valueInputOption="USER_ENTERED",
         body={"values": [[unotes]]}).execute()
     return '1'
+
+
+@app.route('/stats_panel')
+def stats_panel():
+    response_sheet_read = sheet.values().get(spreadsheetId=response_ss_id,
+                                             range=f"A1:KFC25").execute()
+    response_sheet_values = response_sheet_read.get('values', [])
+    df = pd.DataFrame(data=response_sheet_values)
+    id = flask.request.args.get('uid')
+
+    # headers = df.iloc[0]
+    # responses = pd.DataFrame(df.values[1:], columns=headers)
+
+    for row in range(1, len(df)):
+        if id == df.iloc[row][0] and df.iloc[row][2] == "Yes":
+            start_time = time.time()
+
+            success = False
+            for i in range(3):
+                if not success:
+                    try:
+                        us_string, user_family_dict = user_stats(df)
+                        qs_string, pu_string = summary_stats(df, user_family_dict)
+                        success = True
+                    except:
+                        response_sheet_read = sheet.values().get(spreadsheetId=response_ss_id,
+                                                                 range=f"A1:KFC25").execute()
+                        response_sheet_values = response_sheet_read.get('values', [])
+                        df = pd.DataFrame(data=response_sheet_values)
+                if success:
+                    break
+
+            print(time.time() - start_time)
+
+            return_html = f"""
+                    <h1> Statistics <h1>
+                    <hr style="width:60%;">
+                    <h2> Quick stats </h2>
+                    {qs_string}
+                    <br>
+                    <hr style="width:60%;">
+                    <br>
+                    <h2> Per-user Stats (only "active" users) </h2>
+                    {pu_string}
+                    <br>
+                    <hr style="width:60%;">
+                    <br>
+                    <h2> Per-user C-value Family Stats (only "active" users) </h2>
+                    {us_string}
+            """
+
+            return flask.jsonify({"html": return_html})
+    else:
+        return_html = """
+                401 Authorization Error.
+
+                If you are who I think you are, please refresh this page and try again using the correct user ID.
+                """
+        return flask.jsonify({"html": return_html})
+
+
+
+def summary_stats(df, user_family_dict):
+    headers = df.iloc[0]
+    responses = pd.DataFrame(df.values[1:], columns=headers)
+
+
+    headers = set(responses.columns[4:])
+    headers.remove("end")
+
+    five_resp = set()
+    three_resp = set()
+    one_resp = set()
+    five_com = set()
+    three_com = set()
+    one_com = set()
+
+    all_sp = set()
+
+    for key in headers:
+        key_responses = np.array(responses[key]).T
+        num_filled = len(list(filter(None, key_responses[0])))
+        num_comments = len(list(filter(None, key_responses[1])))
+
+        if num_comments >= 5:
+            five_com.add(key)
+            three_com.add(key)
+            one_com.add(key)
+            all_sp.add(key)
+        elif num_comments >= 3:
+            three_com.add(key)
+            one_com.add(key)
+            all_sp.add(key)
+        elif num_comments >= 1:
+            one_com.add(key)
+            all_sp.add(key)
+
+        if num_filled >= 5:
+            five_resp.add(key)
+            one_resp.add(key)
+            all_sp.add(key)
+        elif num_filled >= 3:
+            three_resp.add(key)
+            one_resp.add(key)
+            all_sp.add(key)
+        elif num_filled >= 1:
+            one_resp.add(key)
+            all_sp.add(key)
+
+    user_stats_dict = {}
+    for row in range(len(responses)):
+        row = responses.iloc[row]
+        user_stats_dict[row["User name (shown on the form)"]] = len(list(filter(None, row)))
+
+    all_sp = list(all_sp)
+    all_sp.sort()
+    five_resp = list(five_resp)
+    five_resp.sort()
+    one_resp = list(one_resp)
+    one_resp.sort()
+    five_com = list(five_com)
+    five_com.sort()
+    one_com = list(one_com)
+    one_com.sort()
+
+    summary_value_dict = {"Number of five response C-value species": len(five_resp),
+                          "Number of three response C-value species": len(three_resp),
+                          "Number of one response C-value species": len(one_resp),
+                          "Number of five response comment species": len(five_com),
+                          "Number of three response comment species": len(three_com),
+                          "Number of one response comment species": len(one_com),
+                          "Number of species with values (C-val or comment)": len(all_sp)
+                          }
+
+    qs_string = '<table style="width: auto;" id="customers">'
+    for k, v in summary_value_dict.items():
+        qs_string += f"<tr><td>{k}</td><td>{v}</td></tr>"
+    qs_string += "</table><br><br>"
+
+    qs_string += '<h4> User activity (determined if they have submitted at least one value/comment)<h4> <table id="customers">'
+    active_users = []
+    inactive_users = []
+    for k, v in user_stats_dict.items():
+        if v <= 5:
+            inactive_users.append(k)
+        else:
+            active_users.append(k)
+    qs_string += "<tr><td>Active Users</td>" + ''.join([f"<td>{i}</td>" for i in active_users]) + "</tr>"
+    qs_string += "<tr><td>Inactive Users</td>" + ''.join([f"<td>{i}</td>" for i in inactive_users]) + "</tr></table>"
+
+    pu_string = f'<table style="width: auto;" id="customers">{"".join([f"<th>{i}</th>" for i in ["User", "Number of C-values & comments submitted", "Number of families finished (with skips)"]])}'
+    for k, v in user_stats_dict.items():
+        num_finished = int(v) - 5
+        if num_finished != 0:
+            pu_string += f"<tr><td>{k}</td><td>{int(v) - 5}</td><td>{user_family_dict.get(k)}</td></tr>"
+    pu_string += "</table>"
+
+    # nl = "<br>"
+    # qs_string += f"Five response C-value species<br>{nl.join(five_resp)}<br><br>"
+    # qs_string += f"Three response C-value species<br>{nl.join(three_resp)}<br><br>"
+    # qs_string += f"One response C-value species<br>{nl.join(one_resp)}<br><br>"
+    # qs_string += f"Species with values (C-val or comment)<br>{nl.join(all_sp)}<br><br>"
+
+    return qs_string, pu_string
+
+
+def user_stats(df):
+    headers = df.iloc[0]
+    responses = pd.DataFrame(df.values[1:], columns=headers)
+
+    user_stats_dict = {}
+    user_family_dict = {}
+
+    for user_idx in range(len(responses)):
+        family_array = set()
+        full_family_array = [str(row[54]).lower() for row in data_sheet_values]
+
+        finished_species_count = 0
+        skipped_species_count = 0
+        finished_families_count = 0
+        stats_dict = {}
+        for row in range(1, len(data_sheet_values)):
+            family_string = str(data_sheet_values[row][54]).lower()
+            if family_string not in family_array and "*" in [data_sheet_values[row][58], data_sheet_values[row][59]]:
+                all_occurrences = [i for i in range(len(full_family_array)) if full_family_array[i] == family_string]
+                complete = 2
+
+                finished_family_species_count = 0
+                skipped_family_species_count = 0
+                for i in all_occurrences:
+                    include_species = "*" in [data_sheet_values[i][58], data_sheet_values[i][59]]
+                    occurrence_col = i + 9
+                    if include_species:
+                        if responses.iloc[user_idx][occurrence_col] == '':
+                            complete = 0
+                        elif responses.iloc[user_idx][occurrence_col] in ['*', '?']:
+                            complete = 1
+                            skipped_family_species_count += 1
+                        elif responses.iloc[user_idx][occurrence_col] != '':
+                            finished_family_species_count += 1
+
+                if complete == 2 or complete == 1:
+                    finished_families_count += 1
+
+                skipped_family_species_count += finished_family_species_count
+                finished_species_count += finished_family_species_count
+                skipped_species_count += skipped_family_species_count
+
+                stats_dict[family_string] = {"finished": [str(finished_family_species_count), str(len(all_occurrences))],
+                                             "finished_skips": [str(skipped_family_species_count), str(len(all_occurrences))]}
+
+                family_array.add(family_string)
+
+        stats_dict = OrderedDict(sorted(stats_dict.items()))
+        if skipped_species_count > 0:
+            user_stats_dict[responses.iloc[user_idx][1]] = stats_dict
+            user_family_dict[responses.iloc[user_idx][1]] = "/".join([str(finished_families_count), str(len(family_array))])
+
+
+    us_string = ""
+    for user, stats_dict in user_stats_dict.items():
+        us_string += f"<h4> {user} </h4>"
+        us_string += f'<table style="width: auto;" id="customers"><th>Family Name</th><th>Completed (no skips)</th><th>Completed (with skips)</th>'
+        for family_string, value in stats_dict.items():
+            us_string += f"""
+                <tr>
+                  <td>{family_string}</td><td>{'/'.join(value.get("finished"))}</td><td>{'/'.join(value.get("finished_skips"))}</td>
+                </tr>
+            """
+        us_string += "</table><br><br>"
+
+        # us_string += f"""
+        #             <h4> {user} </h4>
+        #             <table id=customers>
+        #                 {''.join([f'<th>{i}</th>' for i in family_strings])}
+        #                 <tr>
+        #                   {''.join(f'<td>{"/".join(i)}</td>' for i in values)}
+        #                 </tr>
+        #             </table><br><br>
+        #         """
+    return us_string, user_family_dict
 
 
 if __name__ == '__main__':

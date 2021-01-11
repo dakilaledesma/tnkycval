@@ -16,7 +16,7 @@
 
 <body>
 <section class="page-header">
-    <h1 class="project-name">TNKY C-values Submission Form<sub style="font-size:13px;">2.3.1</sub></h1>
+    <h1 class="project-name">TNKY C-values Submission Form<sub style="font-size:13px;">2.4.2</sub></h1>
 
 
     <div id='login'>
@@ -146,6 +146,12 @@
         <a href="javascript:;" id="showadvoptions" style="color: #FFFFFF"><u>Show advanced search options</u></a>
         </div>
 
+        <br>
+
+        <div id="statspaneldiv" style="display: none;">
+        <a href="javascript:;" id="showstatspanel" style="color: #FFFFFF"><u>Show the statistics panel</u></a>
+        </div>
+
 
         <!--
         Slider code within the following table is not mine and may be found here:
@@ -226,6 +232,7 @@
                 </td>
             </tr>
         </table>
+        <br>
     </div>
 
 </section>
@@ -247,6 +254,8 @@
 
 <script>
     var urow = -1;
+    var verified_uid = '';
+    var stats_access = "No";
     var species_row = '';
     var save_family = '';
     var read_sheet = [];
@@ -283,7 +292,11 @@
                 success: function (response) {
                     if (response.result === 1) {
                         urow = response.returns[1].toString();
+                        verified_uid = response.returns[0].toString();
+                        stats_access = response.returns[3].toString();
                         $("#status_text").html("Success! Retrieving new data sheet...");
+
+
 
                         {#
                         The following two sequential AJAX requests (chained success functions) unfortunately
@@ -300,6 +313,9 @@
                                 $("#paramdiv").css('overflow-y', 'auto');
                                 $("#paramdiv").css('display', 'initial');
                                 $("#real-body").css('display', 'initial');
+                                if (stats_access === "Yes"){
+                                    $("#statspaneldiv").css('display', 'initial');
+                                }
                                 // $("#familydiv").css('display', 'initial');
                                 $("#submit_id_button").remove();
                                 $("#status_text").html('<p style="line-height: 0px;">Welcome back, ' + response.returns[2].toString() + '.</p>');
@@ -485,6 +501,26 @@
         $('#advoptionsdiv').on('click', '#hideadvoptions', function () {
             $("#advanced_options_table").css('display', 'none');
             $("#advoptionsdiv").html('<a href="javascript:;" id="showadvoptions" style="color: #FFFFFF"><u>Show advanced search options</u></a');
+        });
+
+        $('#statspaneldiv').on('click', '#showstatspanel', function () {
+            var div = $("#output");
+            $("#statspaneldiv").html('<a href="javascript:;" id="showstatspanel" style="color: #FFFFFF"><u>Loading statistics panel...</u></a');
+            div.html('Loading the statistics panel. <strong>Please wait, this will take some time.</strong>');
+
+            $.ajax({
+                    url: "/stats_panel",
+                    type: "get",
+                    data: {uid: verified_uid},
+                    dataType: "json",
+                    async: true,
+                    success: function (response) {
+                      $('#output').html(response.html);
+                      $("#statspaneldiv").html('<a href="javascript:;" id="showstatspanel" style="color: #FFFFFF"><u>Show the statistics panel</u></a');
+
+                    }
+                });
+
         });
     });
 
