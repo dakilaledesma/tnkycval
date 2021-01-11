@@ -731,9 +731,9 @@ def summary_stats(df, user_family_dict):
 
     pu_string = f'<table id="customers">{"".join([f"<th>{i}</th>" for i in ["User", "Number of C-values & comments submitted", "Number of families finished (with skips)"]])}'
     for k, v in user_stats_dict.items():
-        num_finished = int(v) - 4
+        num_finished = int(v) - 5
         if num_finished != 0:
-            pu_string += f"<tr><td>{k}</td><td>{int(v) - 4}</td><td>{user_family_dict.get(k)}</td>"
+            pu_string += f"<tr><td>{k}</td><td>{int(v) - 5}</td><td>{user_family_dict.get(k)}</td>"
     pu_string += "</table>"
 
 
