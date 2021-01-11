@@ -485,7 +485,7 @@ def gather_species_info():
     if data_sheet_values[species_row][62] != "":
         dropdown_ret_string += f'''  <tr bgcolor="#fffee0">
                                         <td>
-                                            Recommended C-value for TN and KY: {data_sheet_values[species_row][62]}
+                                            Draft C-value for TN and KY: {data_sheet_values[species_row][62]}
                                         </td>
                                     </tr>'''
 
