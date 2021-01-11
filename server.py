@@ -81,7 +81,7 @@ def login():
 @app.route('/refresh_data_sheet')
 def refresh_read_sheet():
     global data_sheet_read, data_sheet_values
-    data_sheet_read = sheet.values().get(spreadsheetId=data_ss_id, range="A:BK").execute()
+    data_sheet_read = sheet.values().get(spreadsheetId=data_ss_id, range="BL").execute()
     data_sheet_values = data_sheet_read.get('values', [])
 
     return '1'
