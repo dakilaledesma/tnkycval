@@ -188,7 +188,8 @@ def generate_dropdown():
                       border-width: 1px;
                       border-radius: 0.3rem;
                       transition: color 0.2s, background-color 0.2s, border-color 0.2s;">
-                        <div class="progressfg" style="  width: {(finished_families_count / len(family_array)) * 100}%; height: 30px; background-color: #4CAF50; line-height: 30px; color: white;">{finished_families_count}/{len(family_array)}⠀Families</div>
+                        <div class="progressfg" style="  width: {(finished_families_count / len(family_array)) * 100}%; height: 30px; background-color: #4CAF50; line-height: 30px; color: white;"></div>
+                        <font size="-1">{finished_families_count}/{len(family_array)} Families</font>
                     </div>
                 </td>
                 <td style="padding: 4px;">
@@ -202,7 +203,8 @@ def generate_dropdown():
                       border-width: 1px;
                       border-radius: 0.3rem;
                       transition: color 0.2s, background-color 0.2s, border-color 0.2s;">
-                        <div class="progressfg" style="  width: {(finished_species_count / total_species_count) * 100}%; height: 30px; background-color: #4CAF50; line-height: 30px; color: white;">{finished_species_count}/{total_species_count}⠀Species</div>
+                        <div class="progressfg" style="  width: {(finished_species_count / total_species_count) * 100}%; height: 30px; background-color: #4CAF50; line-height: 30px; color: white;"></div>
+                        <font size="-1">{finished_species_count}/{total_species_count} Species</font>
                     </div>
                 </td>
             </tr>
@@ -701,12 +703,12 @@ def summary_stats(df, user_family_dict):
                           "Number of species with values (C-val or comment)": len(all_sp)
                           }
 
-    qs_string = '<table style="width: auto;" id="customers">'
+    qs_string = '<table style="width: 60%;" id="customers">'
     for k, v in summary_value_dict.items():
         qs_string += f"<tr><td>{k}</td><td>{v}</td></tr>"
     qs_string += "</table><br><br>"
 
-    qs_string += '<h4> User activity (determined if they have submitted at least one value/comment)<h4> <table id="customers">'
+    qs_string += '<h4> User activity (determined if they have submitted at least one value/comment)</h4> <table id="customers" style="width: 60%;">'
     active_users = []
     inactive_users = []
     for k, v in user_stats_dict.items():
@@ -714,10 +716,13 @@ def summary_stats(df, user_family_dict):
             inactive_users.append(k)
         else:
             active_users.append(k)
-    qs_string += "<tr><td>Active Users</td>" + ''.join([f"<td>{i}</td>" for i in active_users]) + "</tr>"
-    qs_string += "<tr><td>Inactive Users</td>" + ''.join([f"<td>{i}</td>" for i in inactive_users]) + "</tr></table>"
+    qs_string += "<th>Active Users</th><th>Inactive Users</th>"
+    qs_string += "<tr><td>" + '<br>'.join(active_users) + "</td>"
+    qs_string += "<td>" + '<br>'.join(inactive_users) + "</td></tr></table>"
+    # qs_string += "<tr><td>Active Users</td>" + ''.join([f"<td>{i}</td>" for i in active_users]) + "</tr>"
+    # qs_string += "<tr><td>Inactive Users</td>" + ''.join([f"<td>{i}</td>" for i in inactive_users]) + "</tr></table>"
 
-    pu_string = f'<table style="width: auto;" id="customers">{"".join([f"<th>{i}</th>" for i in ["User", "Number of C-values & comments submitted", "Number of families finished (with skips)"]])}'
+    pu_string = f'<table style="width: 60%;" id="customers">{"".join([f"<th>{i}</th>" for i in ["User", "Number of C-values & comments submitted", "Number of families finished (with skips)"]])}'
     for k, v in user_stats_dict.items():
         num_finished = int(v) - 5
         if num_finished != 0:
@@ -788,7 +793,7 @@ def user_stats(df):
     us_string = ""
     for user, stats_dict in user_stats_dict.items():
         us_string += f"<h4> {user} </h4>"
-        us_string += f'<table style="width: auto;" id="customers"><th>Family Name</th><th>Completed (no skips)</th><th>Completed (with skips)</th>'
+        us_string += f'<table style="width: 60%;" id="customers"><th>Family Name</th><th>Completed (no skips)</th><th>Completed (with skips)</th>'
         for family_string, value in stats_dict.items():
             us_string += f"""
                 <tr>
